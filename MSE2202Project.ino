@@ -30,7 +30,7 @@ const int GripLight = A0;//********
 const int UltraLft = 0;//********
 const int ultraRgt = 0;//********
 
-// Eric was here!
+
 
 
 int MovFst = 2200;
