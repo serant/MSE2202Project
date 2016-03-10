@@ -35,11 +35,12 @@ const int ultraRgt = 0;//********
 
 int MovFst = 2200;
 int Stop = 1600;
-bool tf = true;
+
 
 void setup() {
   Serial.begin(9600);
   Wire.begin();
+  
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
   LftEncdr.zero();
@@ -53,25 +54,47 @@ void setup() {
   ArmBend.attach(ArmBendPin);
   ArmBendEncdr.zero();
   pinMode(7, INPUT);
-  digitalWrite(7, HIGH);
+ 
+}
 
+//functions
+//Mode 1
+void Look() {
+  //if already found tesseract-> run 'Return', else-> robot starts looking for tesseracts, 
+  //if detects tesseract stops and runs 'PickUp'
+  //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
+  //needs collision avoidance system -> runs 'Countermeasures'?
+}
+void Countermeasures(){
+  //robot reacts to interference by other robot, after safe returns to 'Look'
+}
+void PickUp() {
+  //robot has deteced tesseract in 'Look' and uses arm to pick it up, after picked up runs 'GoHome'
+}
+void GoHome() {
+  //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
+};
+void Return() {
+  //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
 }
 
 
+//Mode 2
+void Check(){
+  //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+}
+void Move(){
+//robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+}
+
+
+
+//requires timer system and tesseracts picked up counter 
+
+
+
 void loop() {
-  if (!digitalRead(7)) {
-    tf = !tf;
-    delay(300);
-  }
-  if (tf) {
-    LftMtr.writeMicroseconds(MovFst);
-  }
-  else {
-    if (LftMtr.readMicroseconds() != Stop) {
-      LftMtr.writeMicroseconds(Stop);
-    }
-  }
-  Serial.println(digitalRead(7));
+
 
 
 }
