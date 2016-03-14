@@ -4,14 +4,24 @@
 #include <Wire.h>
 #include <uSTimer2.h>
 
+unsigned long CourseWidth = 6000; //course width in mm
+
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 
+//Flags/Switches
+bool StartLooking = true;
+
 //Hall Sensor Stuff
 #define NOFIELD 505L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
+const unsigned HallThreshold = 20; //<- NEEDS TO BE MEASURED
+
+//Mechanical Information
+unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
+unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
@@ -93,6 +103,7 @@ void setup() {
 }
 void loop(){
   DebuggerModule();
+  Look();
 }
 //functions
 
@@ -133,6 +144,18 @@ void Look() {
   //if detects tesseract stops and runs 'PickUp'
   //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
   //needs collision avoidance system -> runs 'Countermeasures'?
+  
+  //Step 1 -> turn left
+  if(StartLooking){
+    RgtMtr.write(RgtMtr.read() + WheelPerimeter);
+    LftMtr.write(LftMtr.read() - WheelPerimeter);
+    StartLooking = false;
+  }
+  
+  if((analogRead((HallSensor1) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold){
+    RgtMtr.writeMicroseconds(ForwardSpeed);
+    LftMtr.writeMicroseconds(ForwardSpeed);
+  }
 }
 void Countermeasures(){
   //robot reacts to interference by other robot, after safe returns to 'Look'
