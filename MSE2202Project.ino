@@ -4,8 +4,8 @@
 #include <Wire.h>
 #include <uSTimer2.h>
 
-unsigned long CourseWidth = 6000; //course width in mm
-
+const unsigned long CourseWidth = 6000; //course width in mm
+unsigned long XPos = 0;
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
@@ -13,6 +13,9 @@ unsigned long CourseWidth = 6000; //course width in mm
 
 //Flags/Switches
 bool StartLooking = true;
+bool EnableIncrement = true;
+bool StartTracking = false;
+bool TurnRight = true;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
@@ -104,6 +107,9 @@ void setup() {
 void loop(){
   DebuggerModule();
   Look();
+  if(StartTracking){
+    trackPosition();
+  }
 }
 //functions
 
@@ -138,6 +144,16 @@ void Ping(){
 void readLineTracker(){
   LineTrackerData = analogRead(LineTracker);
 }
+
+void trackPosition(){
+  if(EnableIncrement == false && LftMtr.read() <= 270){
+    EnableIncrement = true;
+  }  
+  else if(EnableIncrement == false && LftMtr.read() > 270){
+    XPos += WheelPerimeter;
+    EnableIncrement = false;
+  }
+}
 //Mode 1
 void Look() {
   //if already found tesseract-> run 'Return', else-> robot starts looking for tesseracts, 
@@ -150,12 +166,29 @@ void Look() {
     RgtMtr.write(RgtMtr.read() + WheelPerimeter);
     LftMtr.write(LftMtr.read() - WheelPerimeter);
     StartLooking = false;
+    StartTracking = true;
   }
   
-  if((analogRead((HallSensor1) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold){
-    RgtMtr.writeMicroseconds(ForwardSpeed);
-    LftMtr.writeMicroseconds(ForwardSpeed);
+  if(XPos < (CourseWidth - 600)){
+    if((((analogRead(HallSensor1) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold) || ((analogRead(HallSensor2) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold){
+      RgtMtr.writeMicroseconds(ForwardSpeed);
+      LftMtr.writeMicroseconds(ForwardSpeed);
+    }
+    else
+      PickUp();
   }
+  
+  else{  //if reaches end of course width, turn right then left
+    if(TurnRight){
+      LftMtr.write(RgtMtr.read() + (3 * WheelPerimeter));
+      TurnRight = false;
+    }
+    else if(!TurnRight){
+      RgtMtr.write(LftMtr.read() + (3 * WheelPerimeter));
+      TurnRight = true;
+    }
+  }
+  
 }
 void Countermeasures(){
   //robot reacts to interference by other robot, after safe returns to 'Look'
