@@ -3,11 +3,12 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-// Encoders branch 
+
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
+//#define DEBUG_ENCODERS
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
@@ -19,16 +20,15 @@ unsigned LineTrackerData = 0;
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 
+Servo RghtMtr;
 Servo LftMtr;
 Servo ArmBend;
 Servo ArmBase;
-Servo RgtMtr;
 Servo Grip;
 Servo Wrist;
 I2CEncoder LftEncdr;
-I2CEncoder RgtEncdr;
-I2CEncoder ArmBaseEncdr;
-I2CEncoder ArmBendEncdr;
+I2CEncoder RghtEncdr;
+
 
 //Mode Selector Variables
 unsigned int ModeIndex = 0;
@@ -42,8 +42,8 @@ unsigned int ModeIndicator[6] = {
 };
 
 //pins
-const int LftMtrPin = 8;
-const int RgtMtrPin = 0;//*******
+const int LftMtrPin = 5; //Correctly assigned 
+const int RgtMtrPin = 4; //Do not change 
 const int ArmBasePin = 0;//********
 const int ArmBendPin = 0;//********
 const int WristPin = 0;//********
@@ -59,29 +59,35 @@ const int UltrasonicData = 0;
 const int HallSensor1 = A0;
 const int HallSensor2 = A1;
 const int LineTracker = A2;
-int MovFst = 2200;
-int Stop = 1600;
 
+int lftspeed = 1500;
+int rghtspeed = 1500;
+long lftPosition;
+long rghtPosition;
 
 void setup() {
   Serial.begin(9600);
   Wire.begin();
   
+  // Set up two motors
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
-  LftEncdr.zero();
-  
   pinMode(RgtMtrPin, OUTPUT);
-  RgtMtr.attach(RgtMtrPin);
-  RgtEncdr.zero();
+  RghtMtr.attach(RgtMtrPin);
+
+  // Set up encoders DO NOT CHANGE ORDER
+  RghtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
+  RghtEncdr.setReversed(false);  // adjust for positive count when moving forward
+  LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
+  LftEncdr.setReversed(true);  // adjust for positive count when moving forward
   
   pinMode(ArmBasePin, OUTPUT);
   ArmBase.attach(ArmBasePin);
-  ArmBaseEncdr.zero();
+  
   
   pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin);
-  ArmBendEncdr.zero();
+  
   pinMode(7, INPUT);
   
   pinMode(LineTracker, INPUT);
@@ -93,6 +99,28 @@ void setup() {
 }
 void loop(){
   DebuggerModule();
+
+  int timer = millis();
+  //Serial.println(timer);
+  Serial.print("Encoders L: ");
+    Serial.print(LftEncdr.getRawPosition());
+    Serial.print(", R: ");
+    Serial.println(RghtEncdr.getRawPosition());
+  
+  if (timer < 1000){
+    lftspeed = 1800;
+    rghtspeed = 1800;
+    //Serial.println("move");
+  } else {
+    lftspeed = 1500;
+    rghtspeed = 1500;
+  }
+  //Serial.print(lftspeed);
+  
+  LftMtr.writeMicroseconds(lftspeed);
+  RghtMtr.writeMicroseconds(rghtspeed);
+
+  
 }
 //functions
 
@@ -113,6 +141,16 @@ void DebuggerModule(){
   #ifdef DEBUG_LINE_TRACKER
     Serial.print("Light Level: ");
     Serial.println(LineTrackerData, DEC);
+  #endif
+  
+  #ifdef DEBUG_ENCODERS
+  lftPosition = LftEncdr.getRawPosition();
+  rghtPosition = RghtEncdr.getRawPosition();
+
+  Serial.print("Encoders L: ");
+  Serial.print(lftPosition);
+  Serial.print(", R: ");
+  Serial.println(rghtPosition);
   #endif
 }
 
