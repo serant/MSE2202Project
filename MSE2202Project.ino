@@ -27,9 +27,10 @@ const unsigned HallThreshold = 20; //<- NEEDS TO BE MEASURED
 //Mechanical Information
 unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
-
+unsigned LftSpeed = 1600;
+unsigned RgtSpeed = 1600;
 //Line Tracker Stuff
-unsigned LineTrackerData = 0;
+unsigned GripLightData = 0;
 
 //Data variables
 unsigned long HallSensorValue = 0;
@@ -169,7 +170,7 @@ void DebuggerModule(){
   
   #ifdef DEBUG_LINE_TRACKER
     Serial.print("Light Level: ");
-    Serial.println(LineTrackerData, DEC);
+    Serial.println(GripLightData, DEC);
   #endif
   
   #ifdef DEBUG_ENCODERS
@@ -192,7 +193,7 @@ void Ping(){
 }
 
 void readLineTracker(){
-  LineTrackerData = analogRead(GripLight);
+  GripLightData = analogRead(GripLight);
 }
 //Mode 1
 void trackPosition(){
