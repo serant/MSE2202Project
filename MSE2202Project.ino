@@ -37,14 +37,14 @@ unsigned LineTrackerData = 0;
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 
-Servo RghtMtr;
+Servo RgtMtr;
 Servo LftMtr;
 Servo ArmBend;
 Servo ArmBase;
 Servo Grip;
 Servo Wrist;
 I2CEncoder LftEncdr;
-I2CEncoder RghtEncdr;
+I2CEncoder RgtEncdr;
 
 
 //Mode Selector Variables
@@ -83,10 +83,10 @@ int MovFst = 2200;
 int Stop = 1600;
 >>>>>>> master
 
-int lftspeed = 1500;
-int rghtspeed = 1500;
-long lftPosition;
-long rghtPosition;
+int LftSpeed = 1500;
+int RgtSpeed = 1500;
+long LftPosition;
+long RgtPosition;
 
 void setup() {
   Serial.begin(9600);
@@ -96,11 +96,11 @@ void setup() {
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
   pinMode(RgtMtrPin, OUTPUT);
-  RghtMtr.attach(RgtMtrPin);
+  RgtMtr.attach(RgtMtrPin);
 
   // Set up encoders DO NOT CHANGE ORDER
-  RghtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
-  RghtEncdr.setReversed(false);  // adjust for positive count when moving forward
+  RgtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
+  RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
   LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
   
@@ -133,20 +133,20 @@ void loop(){
   Serial.print("Encoders L: ");
     Serial.print(LftEncdr.getRawPosition());
     Serial.print(", R: ");
-    Serial.println(RghtEncdr.getRawPosition());
+    Serial.println(RgtEncdr.getRawPosition());
   
   if (timer < 1000){
-    lftspeed = 1800;
-    rghtspeed = 1800;
+    LftSpeed = 1800;
+    RgtSpeed = 1800;
     //Serial.println("move");
   } else {
-    lftspeed = 1500;
-    rghtspeed = 1500;
+    LftSpeed = 1500;
+    RgtSpeed = 1500;
   }
   //Serial.print(lftspeed);
   
-  LftMtr.writeMicroseconds(lftspeed);
-  RghtMtr.writeMicroseconds(rghtspeed);
+  LftMtr.writeMicroseconds(LftSpeed);
+  RgtMtr.writeMicroseconds(RgtSpeed);
 
   
 =======
@@ -188,12 +188,12 @@ void DebuggerModule(){
   
   #ifdef DEBUG_ENCODERS
   lftPosition = LftEncdr.getRawPosition();
-  rghtPosition = RghtEncdr.getRawPosition();
+  RgtPosition = RgtEncdr.getRawPosition();
 
   Serial.print("Encoders L: ");
-  Serial.print(lftPosition);
+  Serial.print(LftPosition);
   Serial.print(", R: ");
-  Serial.println(rghtPosition);
+  Serial.println(RgtPosition);
   #endif
 }
 
