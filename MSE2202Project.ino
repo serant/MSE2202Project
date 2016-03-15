@@ -27,7 +27,11 @@ unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
 
 //Line Tracker Stuff
+<<<<<<< HEAD
 unsigned GripLightData = 0;
+=======
+unsigned LineTrackerData = 0;
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
@@ -65,8 +69,14 @@ const int HallGrip = A0;//********
 const int GripLight = A2;//********
 const int UltrasonicPing = 0;
 const int UltrasonicData = 0;
+<<<<<<< HEAD
 const int HallLft = A0;
 const int HallRgt = A1;
+=======
+const int HallSensor1 = A0;
+const int HallSensor2 = A1;
+const int LineTracker = A2;
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
 int MovFst = 2200;
 int Stop = 1600;
 
@@ -92,7 +102,11 @@ void setup() {
   ArmBendEncdr.zero();
   pinMode(7, INPUT);
   
+<<<<<<< HEAD
   pinMode(GripLight, INPUT);
+=======
+  pinMode(LineTracker, INPUT);
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
   
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
@@ -111,8 +125,13 @@ void loop(){
 void DebuggerModule(){
   //Debugger module -> all debugger code can go here
   #ifdef DEBUG_HALL_SENSOR
+<<<<<<< HEAD
     Serial.println((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000);
     Serial.println((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000);
+=======
+    Serial.println((analogRead(HallSensor1) - NOFIELD) * TOMILLIGAUSS / 1000);
+    Serial.println((analogRead(HallSensor2) - NOFIELD) * TOMILLIGAUSS / 1000);
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
   #endif
   
   #ifdef DEBUG_ULTRASONIC
@@ -124,7 +143,11 @@ void DebuggerModule(){
   
   #ifdef DEBUG_LINE_TRACKER
     Serial.print("Light Level: ");
+<<<<<<< HEAD
     Serial.println(GripLightData, DEC);
+=======
+    Serial.println(LineTrackerData, DEC);
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
   #endif
 }
 
@@ -136,8 +159,13 @@ void Ping(){
   UltrasonicDistance = (pulseIn(UltrasonicData, HIGH, 10000)/58);
 }
 
+<<<<<<< HEAD
 void readGripLight(){
   GripLightData = analogRead(GripLight);
+=======
+void readLineTracker(){
+  LineTrackerData = analogRead(LineTracker);
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
 }
 
 void trackPosition(){
@@ -165,7 +193,11 @@ void Look() {
   }
   
   if(XPos < (CourseWidth - 600)){
+<<<<<<< HEAD
     if((((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold) || ((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold){
+=======
+    if((((analogRead(HallSensor1) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold) || ((analogRead(HallSensor2) - NOFIELD) * TOMILLIGAUSS/1000) < HallThreshold){
+>>>>>>> 629571992d954d653cb54784598f08c43d01f702
       RgtMtr.writeMicroseconds(ForwardSpeed);
       LftMtr.writeMicroseconds(ForwardSpeed);
     }
