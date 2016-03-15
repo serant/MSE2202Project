@@ -68,20 +68,6 @@ const int UltrasonicPing = 0;
 const int UltrasonicData = 0;
 const int HallLft = A0;
 const int HallRgt = A1;
-<<<<<<< HEAD
-=======
-const int HallSensor1 = A0;
-const int HallSensor2 = A1;
-const int LineTracker = A2;
-<<<<<<< HEAD
-=======
->>>>>>> 629571992d954d653cb54784598f08c43d01f702
-=======
-
->>>>>>> master
-int MovFst = 2200;
-int Stop = 1600;
->>>>>>> master
 
 int LftSpeed = 1500;
 int RgtSpeed = 1500;
@@ -122,7 +108,6 @@ void setup() {
 }
 void loop(){
   DebuggerModule();
-<<<<<<< HEAD
 
   int timer = millis();
   //Serial.println(timer);
@@ -145,12 +130,10 @@ void loop(){
   RgtMtr.writeMicroseconds(RgtSpeed);
 
   
-=======
   Look();
   if(StartTracking){
     trackPosition();
   }
->>>>>>> master
 }
 //functions
 
