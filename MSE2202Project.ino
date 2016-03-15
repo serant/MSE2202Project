@@ -42,25 +42,27 @@ unsigned int ModeIndicator[6] = {
 };
 
 //pins
-const int LftMtrPin = 8;
-const int RgtMtrPin = 0;//*******
-const int ArmBasePin = 0;//********
-const int ArmBendPin = 0;//********
+const int LftMtrPin = 5;
+const int RgtMtrPin = 4;//*******
+const int ArmBasePin = 6;//********
+const int ArmBendPin = 7;//********
 const int WristPin = 0;//********
 const int GripPin = 0;//********
-const int HallRgt = A0;//********
+const int HallRgt = A1;//********
 const int HallLft = A0;//********
-const int HallGrip = A0;//********
-const int GripLight = A0;//********
-const int UltraLft = 0;//********
-const int UltraRgt = 0;//********
-const int UltrasonicPing = 0;
-const int UltrasonicData = 0;
-const int HallSensor1 = A0;
-const int HallSensor2 = A1;
-const int LineTracker = A2;
+const int HallGrip = A4;//********
+const int GripLight = A2;//********
+const int UltrasonicPing = 2;
+const int UltrasonicData = 3;
 int MovFst = 2200;
 int Stop = 1600;
+
+// variables
+unsigned int MotorSpeed;
+unsigned int LeftMotorSpeed;
+unsigned int RightMotorSpeed;
+unsigned long LeftMotorOffset;
+unsigned long RightMotorOffset;
 
 
 void setup() {
@@ -84,7 +86,7 @@ void setup() {
   ArmBendEncdr.zero();
   pinMode(7, INPUT);
   
-  pinMode(LineTracker, INPUT);
+  pinMode(GripLight, INPUT);
   
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
@@ -92,15 +94,16 @@ void setup() {
  
 }
 void loop(){
-  DebuggerModule();
+ DebuggerModule();
+ 
 }
 //functions
 
 void DebuggerModule(){
   //Debugger module -> all debugger code can go here
   #ifdef DEBUG_HALL_SENSOR
-    Serial.println((analogRead(HallSensor1) - NOFIELD) * TOMILLIGAUSS / 1000);
-    Serial.println((analogRead(HallSensor2) - NOFIELD) * TOMILLIGAUSS / 1000);
+    Serial.println((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000);
+    Serial.println((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000);
   #endif
   
   #ifdef DEBUG_ULTRASONIC
@@ -125,7 +128,7 @@ void Ping(){
 }
 
 void readLineTracker(){
-  LineTrackerData = analogRead(LineTracker);
+  LineTrackerData = analogRead(GripLight);
 }
 //Mode 1
 void Look() {
@@ -150,7 +153,45 @@ void Return() {
 
 //Mode 2
 void Check(){
+  
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+// Robo --> back and forth scanning motion
+LeftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1600, 2200);
+RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1600, 2200);
+int lastHallReading = analogRead(HallGrip);
+ 
+LeftMotorSpeed = 1700;
+for(long counter = 0; counter < 10000; counter++){
+  int currentHallReading = analogRead(HallGrip);
+  if(currentHallReading - lastHallReading > 15){
+    return;
+  }
+}
+LeftMotorSpeed = 1500;
+for(long counter = 0; counter < 10000; counter++){
+  int currentHallReading = analogRead(HallGrip);
+  if(currentHallReading - lastHallReading > 15){
+    return;
+  }
+}
+LeftMotorSpeed = 1600;
+delay(200);
+RightMotorSpeed = 1700;
+for(long counter = 0; counter < 10000; counter++){
+  int currentHallReading = analogRead(HallGrip);
+  if(currentHallReading - lastHallReading > 15){
+    return;
+  }
+}
+RightMotorSpeed = 1500;
+for(long counter = 0; counter < 10000; counter++){
+  int currentHallReading = analogRead(HallGrip);
+  if(currentHallReading - lastHallReading > 15){
+    return;
+  }
+}
+RightMotorSpeed = 1600;
+delay(200);
 }
 void Move(){
 //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
