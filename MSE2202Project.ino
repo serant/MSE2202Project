@@ -11,6 +11,7 @@ unsigned long XPos = 0;
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
+//#define DEBUG_ENCODERS
 
 //Flags/Switches
 bool StartLooking = true;
@@ -29,6 +30,7 @@ unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
+
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
@@ -56,8 +58,8 @@ unsigned int ModeIndicator[6] = {
 };
 
 //pins
-const int LftMtrPin = 5;
-const int RgtMtrPin = 4;//*******
+const int LftMtrPin = 5;//Correctly Assigned
+const int RgtMtrPin = 4;//Do not change
 const int ArmBasePin = 6;//********
 const int ArmBendPin = 7;//********
 const int WristPin = 0;//********
@@ -82,6 +84,18 @@ unsigned long RightMotorOffset;
 void setup() {
   Serial.begin(9600);
   Wire.begin();
+  
+  // Set up two motors
+  pinMode(LftMtrPin, OUTPUT);
+  LftMtr.attach(LftMtrPin);
+  pinMode(RgtMtrPin, OUTPUT);
+  RgtMtr.attach(RgtMtrPin);
+  
+  // Set up encoders DO NOT CHANGE ORDER
+  RgtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
+  RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
+  LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
+  LftEncdr.setReversed(true);  // adjust for positive count when moving forward
   
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
@@ -109,7 +123,30 @@ void setup() {
 }
 void loop(){
   DebuggerModule();
+  
+
+  int timer = millis();
+  //Serial.println(timer);
+  Serial.print("Encoders L: ");
+  Serial.print(LftEncdr.getRawPosition());
+  Serial.print(", R: ");
+  Serial.println(RgtEncdr.getRawPosition());
+  
+  if (timer < 1000){
+    LftSpeed = 1800;
+    RgtSpeed = 1800;
+    //Serial.println("move");
+  } else {
+    LftSpeed = 1500;
+    RgtSpeed = 1500;
+  }
+  //Serial.print(lftspeed);
+  
+  LftMtr.writeMicroseconds(LftSpeed);
+  RgtMtr.writeMicroseconds(RgtSpeed);
+  
   Look();
+  
   if(StartTracking){
     trackPosition();
   }
@@ -133,6 +170,16 @@ void DebuggerModule(){
   #ifdef DEBUG_LINE_TRACKER
     Serial.print("Light Level: ");
     Serial.println(LineTrackerData, DEC);
+  #endif
+  
+  #ifdef DEBUG_ENCODERS
+    lftPosition = LftEncdr.getRawPosition();
+    RgtPosition = RgtEncdr.getRawPosition();
+  
+    Serial.print("Encoders L: ");
+    Serial.print(LftPosition);
+    Serial.print(", R: ");
+    Serial.println(RgtPosition);
   #endif
 }
 
