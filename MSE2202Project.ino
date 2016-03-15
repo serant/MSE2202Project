@@ -4,14 +4,17 @@
 #include <Wire.h>
 #include <uSTimer2.h>
 
-//DEBUGGERS
-#define DEBUG_HALL_SENSOR
-#define DEBUG_ULTRASONIC
+//DEBUGGERS -> uncomment to debug
+//#define DEBUG_HALL_SENSOR
+//#define DEBUG_ULTRASONIC
+//#define DEBUG_LINE_TRACKER
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
 
+//Line Tracker Stuff
+unsigned LineTrackerData = 0;
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
@@ -53,9 +56,9 @@ const int UltraLft = 0;//********
 const int UltraRgt = 0;//********
 const int UltrasonicPing = 0;
 const int UltrasonicData = 0;
-const unsigned HallSensor1 = A0;
-const unsigned HallSensor2 = A1;
-
+const int HallSensor1 = A0;
+const int HallSensor2 = A1;
+const int LineTracker = A2;
 int MovFst = 2200;
 int Stop = 1600;
 
@@ -81,6 +84,8 @@ void setup() {
   ArmBendEncdr.zero();
   pinMode(7, INPUT);
   
+  pinMode(LineTracker, INPUT);
+  
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicData, INPUT);
@@ -95,6 +100,7 @@ void DebuggerModule(){
   //Debugger module -> all debugger code can go here
   #ifdef DEBUG_HALL_SENSOR
     Serial.println((analogRead(HallSensor1) - NOFIELD) * TOMILLIGAUSS / 1000);
+    Serial.println((analogRead(HallSensor2) - NOFIELD) * TOMILLIGAUSS / 1000);
   #endif
   
   #ifdef DEBUG_ULTRASONIC
@@ -102,6 +108,11 @@ void DebuggerModule(){
     Serial.print(UltrasonicDistance*58, DEC);
     Serial.print(", cm's: ");
     Serial.println(UltrasonicDistance);
+  #endif
+  
+  #ifdef DEBUG_LINE_TRACKER
+    Serial.print("Light Level: ");
+    Serial.println(LineTrackerData, DEC);
   #endif
 }
 
@@ -113,6 +124,9 @@ void Ping(){
   UltrasonicDistance = (pulseIn(UltrasonicData, HIGH, 10000)/58);
 }
 
+void readLineTracker(){
+  LineTrackerData = analogRead(LineTracker);
+}
 //Mode 1
 void Look() {
   //if already found tesseract-> run 'Return', else-> robot starts looking for tesseracts, 
