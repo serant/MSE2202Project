@@ -3,7 +3,7 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-
+// Encoders branch 
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
