@@ -125,8 +125,8 @@ void setup() {
  
 }
 void loop(){
-// DebuggerModule();
-Check();
+  DebuggerModule();
+
   
 
   int timer = millis();
