@@ -67,7 +67,7 @@ const int WristPin = 0;//********
 const int GripPin = 0;//********
 const int HallRgt = A1;//********
 const int HallLft = A0;//********
-const int HallGrip = A4;//********
+const int HallGrip = A5;//********
 const int GripLight = A2;//********
 const int UltrasonicPing = 2;
 const int UltrasonicData = 3;
@@ -78,6 +78,8 @@ int Stop = 1600;
 unsigned int MotorSpeed;
 unsigned int LeftMotorSpeed;
 unsigned int RightMotorSpeed;
+unsigned int LefftMotorPos;
+unsigned int RightMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
@@ -124,6 +126,7 @@ void setup() {
 }
 void loop(){
   DebuggerModule();
+
   
 
   int timer = millis();
@@ -260,41 +263,59 @@ void Check(){
   
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
 // Robo --> back and forth scanning motion
-LeftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1600, 2200);
-RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1600, 2200);
+LeftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
+RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
 int lastHallReading = analogRead(HallGrip);
+int LftEncoderCounter = LftEncdr.getRawPosition();
+int RgtEncoderCounter = RgtEncdr.getRawPosition();
  
-LeftMotorSpeed = 1700;
-for(long counter = 0; counter < 10000; counter++){
+LeftMotorSpeed = 1650;
+LftMtr.writeMicroseconds(LeftMotorSpeed);
+for(LftEncoderCounter; LftEncoderCounter < 50; LftEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
-  if(currentHallReading - lastHallReading > 15){
+  Serial.print("Left Encoder Forward: ");
+  Serial.println(LftEncoderCounter);
+  if(currentHallReading - lastHallReading > 20){
+    return;
+  }
+}
+LeftMotorSpeed = 1350;
+LftMtr.writeMicroseconds(LeftMotorSpeed);
+for(LftEncoderCounter; LftEncoderCounter > 0; LftEncoderCounter--){
+  int currentHallReading = analogRead(HallGrip);
+  Serial.print("Left Encoder Backward: ");
+  Serial.println(LftEncoderCounter);
+  if(currentHallReading - lastHallReading > 20){
     return;
   }
 }
 LeftMotorSpeed = 1500;
-for(long counter = 0; counter < 10000; counter++){
+LftMtr.writeMicroseconds(LeftMotorSpeed);
+delay(200);
+
+
+RightMotorSpeed = 1650;
+RgtMtr.writeMicroseconds(RightMotorSpeed);
+for(RgtEncoderCounter; RgtEncoderCounter < 50; RgtEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
-  if(currentHallReading - lastHallReading > 15){
+  Serial.print("Right Encoder Forward: ");
+  Serial.println(RgtEncoderCounter);
+  if(currentHallReading - lastHallReading > 20){
     return;
   }
 }
-LeftMotorSpeed = 1600;
-delay(200);
-RightMotorSpeed = 1700;
-for(long counter = 0; counter < 10000; counter++){
+RightMotorSpeed = 1350;
+RgtMtr.writeMicroseconds(RightMotorSpeed);
+for(RgtEncoderCounter; RgtEncoderCounter > 0; RgtEncoderCounter--){
   int currentHallReading = analogRead(HallGrip);
-  if(currentHallReading - lastHallReading > 15){
+  Serial.print("Right Encoder Backward: ");
+  Serial.println(RgtEncoderCounter);
+  if(currentHallReading - lastHallReading > 20){
     return;
   }
 }
 RightMotorSpeed = 1500;
-for(long counter = 0; counter < 10000; counter++){
-  int currentHallReading = analogRead(HallGrip);
-  if(currentHallReading - lastHallReading > 15){
-    return;
-  }
-}
-RightMotorSpeed = 1600;
+RgtMtr.writeMicroseconds(RightMotorSpeed);
 delay(200);
 }
 void Move(){
