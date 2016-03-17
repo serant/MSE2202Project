@@ -84,29 +84,37 @@ unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
 
+// Tracking Variables
+long SvdLftPosition;
+long SvdRgtPosition;
+const int CE = 637;//pulses per revolution 
+const int CF= (3.14159*69.85)/CE; //Conversion factor, traslates encoder pulses to linear displacement
+int DstnceLft = 0;
+int DstnceRgt = 0; 
+int Dstnce = 0;
+int Theta = 0;
+int SvdTheta = 0;
+int XPstn = 0;
+int YPstn = 0;
+ 
+
 void setup() {
   Serial.begin(9600);
   Wire.begin();
   
   // Set up two motors
-  pinMode(LftMtrPin, OUTPUT);
-  LftMtr.attach(LftMtrPin);
   pinMode(RgtMtrPin, OUTPUT);
   RgtMtr.attach(RgtMtrPin);
-  
+
+  pinMode(LftMtrPin, OUTPUT);
+  LftMtr.attach(LftMtrPin);
+
   // Set up encoders DO NOT CHANGE ORDER
   RgtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
   RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
+  
   LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
-  
-  pinMode(LftMtrPin, OUTPUT);
-  LftMtr.attach(LftMtrPin);
-  LftEncdr.zero();
-  
-  pinMode(RgtMtrPin, OUTPUT);
-  RgtMtr.attach(RgtMtrPin);
-  RgtEncdr.zero();
   
   pinMode(ArmBasePin, OUTPUT);
   ArmBase.attach(ArmBasePin);
@@ -122,14 +130,18 @@ void setup() {
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicData, INPUT);
- 
+
 }
 void loop(){
   DebuggerModule();
 
-  
-
   int timer = millis();
+  Position();
+
+  //if(timer > 8000){
+    //GoHome();
+  //}
+  
   //Serial.println(timer);
   Serial.print("Encoders L: ");
   Serial.print(LftEncdr.getRawPosition());
@@ -177,13 +189,15 @@ void DebuggerModule(){
   #endif
   
   #ifdef DEBUG_ENCODERS
-    lftPosition = LftEncdr.getRawPosition();
-    RgtPosition = RgtEncdr.getRawPosition();
-  
-    Serial.print("Encoders L: ");
-    Serial.print(LftPosition);
-    Serial.print(", R: ");
-    Serial.println(RgtPosition);
+
+  LftPosition = LftEncdr.getRawPosition();
+  RgtPosition = RgtEncdr.getRawPosition();
+
+  Serial.print("Encoders L: ");
+  Serial.print(LftPosition);
+  Serial.print(", R: ");
+  Serial.println(RgtPosition);
+
   #endif
 }
 
@@ -252,9 +266,43 @@ void PickUp() {
 }
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
+  SvdLftPosition = LftEncdr.getRawPosition();
+  SvdRgtPosition = RgtEncdr.getRawPosition();
+  Position();
+  SvdTheta = atan(XPstn/YPstn);
+  while (Theta > SvdTheta + (3.14/16) && Theta <SvdTheta - (3.14/16)){
+    LftMtr.write(1600);
+    RgtMtr.write(1400);
+    Position();
+  }
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
+  int SvdLft = LftEncdr.getRawPosition();
+  while (LftEncdr.getRawPosition() < SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)){
+     LftMtr.write(1600);
+     RgtMtr.write(1600);
+  }
+  
 };
 void Return() {
   //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+}
+void Position(){
+  DstnceRgt = CF * (RgtEncdr.getRawPosition()); // Distance traveled by left Wheel 
+  Serial.println(DstnceRgt);
+  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by right wheel 
+  Serial.println(DstnceLft);
+  
+  Dstnce = (DstnceRgt + DstnceLft)/2;
+  Serial.println(Dstnce);
+  
+  Theta = (DstnceLft - DstnceRgt)/175; // Change in orientation, taking starting postion as Theta = 0
+  Serial.println(Theta);
+  
+  XPstn = Dstnce * cos(Theta);
+  YPstn = Dstnce * sin(Theta);
+  Serial.println(XPstn);
+  Serial.println(YPstn);
 }
 
 
