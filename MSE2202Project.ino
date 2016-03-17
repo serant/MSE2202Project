@@ -65,6 +65,19 @@ int RgtSpeed = 1500;
 long LftPosition;
 long RgtPosition;
 
+// Tracking Variables
+long SvdLftPosition;
+long SvdRgtPosition;
+const int CE = 637;//pulses per revolution 
+const int CF= (3.14159*69.85)/CE; //Conversion factor, traslates encoder pulses to linear displacement
+int DstnceLft = 0;
+int DstnceRgt = 0; 
+int Dstnce = 0;
+int Theta;
+int XPstn;
+int YPstn;
+ 
+
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -95,30 +108,11 @@ void setup() {
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicData, INPUT);
- 
+
 }
 void loop(){
   DebuggerModule();
-
-  int timer = millis();
-  //Serial.println(timer);
-  Serial.print("Encoders L: ");
-    Serial.print(LftEncdr.getRawPosition());
-    Serial.print(", R: ");
-    Serial.println(RgtEncdr.getRawPosition());
   
-  if (timer < 1000){
-    LftSpeed = 1800;
-    RgtSpeed = 1800;
-    //Serial.println("move");
-  } else {
-    LftSpeed = 1500;
-    RgtSpeed = 1500;
-  }
-  //Serial.print(lftspeed);
-  
-  LftMtr.writeMicroseconds(LftSpeed);
-  RgtMtr.writeMicroseconds(RgtSpeed);
 
   
 }
@@ -180,9 +174,22 @@ void PickUp() {
 }
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
+  SvdLftPosition = LftEncdr.getRawPosition();
+  SvdRgtPosition = RgtEncdr.getRawPosition();                              
 };
 void Return() {
   //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+}
+void Position(){
+  
+  DstnceLft = CF * LftEncdr.getRawPosition(); // Distance traveled by left Wheel 
+  DstnceRgt = CF * RgtEncdr.getRawPosition(); // Distnace traveled by right wheel 
+  Dstnce = (DstnceRgt + DstnceLft)/2;
+  
+  Theta = (DstnceLft - DstnceRgt)/B; // Change in orientation, taking starting postion as Theta = 0
+
+  XPstn = Dstnce * cos(Theta);
+  YPstn = Dstnce * sin(Theta);
 }
 
 
