@@ -33,7 +33,6 @@ unsigned RgtSpeed = 1600;
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
 unsigned GripLightData = 0;
->>> >>> > origin / master
 
 //Data variables
 unsigned long HallSensorValue = 0;
@@ -166,7 +165,7 @@ void loop() {
   Look();
   if (StartTracking) {
 
-    trackPosition();
+    TrackPosition();
   }
 }
 //functions
@@ -212,11 +211,11 @@ void Ping() {
   UltrasonicDistance = (pulseIn(UltrasonicData, HIGH, 10000) / 58);
 }
 
-void readLineTracker() {
+void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
 }
 //Mode 1
-void trackPosition() {
+void TrackPosition() {
   if (EnableIncrement == false && LftMtr.read() <= 270) {
     EnableIncrement = true;
   }
@@ -262,8 +261,9 @@ void Look() {
           TurnRight = true;
         }
       }
-
     }
+  }
+}
     void Countermeasures() {
       //robot reacts to interference by other robot, after safe returns to 'Look'
     }
@@ -285,7 +285,7 @@ void Look() {
         else turn = 3;  // tess to right
       }
       switch (turn) {
-        case 1: {
+        case 1:
             RgtMtr.write(1450); ///this should align robot a bit to left  *******test #s
             LftMtr.write(1400);
             delay(500);
@@ -294,8 +294,9 @@ void Look() {
             delay(500);
             LftMtr.write(1600);
             RgtMtr.write(1600);
-          }
-        case 2: {
+            break;
+            
+        case 2: 
             LftMtr.write(1450); ///should align robot bit to right **********test #s
             RgtMtr.write(1400);
             delay(500);
@@ -304,8 +305,9 @@ void Look() {
             delay(500);
             LftMtr.write(1600);
             RgtMtr.write(1600);
-          }
-        case 3: {
+            break;
+
+        case 3: 
             while (UltrasonicDistance > 5 || UltrasonicDistance < 3) {  ///align tesseract in middle *******test #s, in cm
               ////******want to use IR or some other form of distance? think it may work better, especially for small distance
               Ping();
@@ -321,9 +323,9 @@ void Look() {
             ArmBase.write(50);
             ArmBend.write(160);
             if (ArmBase.read() == 100) return;   ///////requires ArmBase not be at 100 when not holding something (folded up empty ~37)
+            break;
           }
       }
-    }
 
     void GoHome() {
       //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
