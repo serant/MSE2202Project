@@ -320,6 +320,40 @@ delay(200);
 }
 void Move(){
 //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+bool WallDistance = false;
+int GripCounter;
+
+while(WallDistance = false){ // approach wall
+ Ping();
+  if(UltrasonicDistance > 5){
+    RightMotorSpeed = 1650;
+    LeftMotorSpeed = 1650;
+    LftMtr.writeMicroseconds(LeftMotorSpeed);
+    RgtMtr.writeMicroseconds(RightMotorSpeed);
+  }
+  if(UltrasonicDistance < 5){
+    WallDistance = true;
+  }
+}
+// Robot picks up tesseract
+Grip.writeMicroseconds(120); // open grip
+delay(300);
+ArmBend.writeMicroseconds(165);
+ArmBase.writeMicroseconds(165);
+delay(300);
+
+while(analogRead(2) < 400){
+  LeftMotorSpeed = 1425;
+  LftMtr.writeMicroseconds(1425);
+}
+Grip.writeMicroseconds(5); // close grip
+
+RightMotorSpeed = 1350;
+LeftMotorSpeed = 1350;
+LftMtr.writeMicroseconds(LeftMotorSpeed);
+RgtMtr.writeMicroseconds(RightMotorSpeed);
+
+
 }
 
 
