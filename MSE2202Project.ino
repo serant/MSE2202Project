@@ -11,7 +11,7 @@ unsigned long XPos = 0;
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
-//#define DEBUG_ENCODERS
+#define DEBUG_ENCODERS
 
 //Flags/Switches
 bool StartLooking = true;
@@ -76,10 +76,10 @@ int Stop = 1600;
 
 // variables
 unsigned int MotorSpeed;
-unsigned int LeftMotorSpeed;
-unsigned int RightMotorSpeed;
-unsigned int LefftMotorPos;
-unsigned int RightMotorPos;
+unsigned int LftMotorSpeed;
+unsigned int RgtMotorSpeed;
+unsigned int LftMotorPos;
+unsigned int RgtMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
@@ -87,15 +87,15 @@ unsigned long RightMotorOffset;
 // Tracking Variables
 long SvdLftPosition;
 long SvdRgtPosition;
-const int CE = 637;//pulses per revolution 
-const int CF= (3.14159*69.85)/CE; //Conversion factor, traslates encoder pulses to linear displacement
-int DstnceLft = 0;
-int DstnceRgt = 0; 
-int Dstnce = 0;
-int Theta = 0;
-int SvdTheta = 0;
-int XPstn = 0;
-int YPstn = 0;
+const double CE = 637;//pulses per revolution 
+const double CF= ((3.14159*69.85)/CE); //Conversion factor, traslates encoder pulses to linear displacement
+double DstnceLft = 0;
+double DstnceRgt = 0; 
+double Dstnce = 0;
+double Theta = 0;
+double SvdTheta = 0;
+double XPstn = 0;
+double YPstn = 0;
  
 
 void setup() {
@@ -110,11 +110,12 @@ void setup() {
   LftMtr.attach(LftMtrPin);
 
   // Set up encoders DO NOT CHANGE ORDER
-  RgtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
-  RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
-  
   LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
+  RgtEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);  
+  RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
+  //LftEncdr.init(1.0/3.0*MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
+  //LftEncdr.setReversed(true);  // adjust for positive count when moving forward
   
   pinMode(ArmBasePin, OUTPUT);
   ArmBase.attach(ArmBasePin);
@@ -138,17 +139,18 @@ void loop(){
   int timer = millis();
   Position();
 
-  //if(timer > 8000){
-    //GoHome();
-  //}
+  if(timer > 8000){
+    GoHome();
+  }
   
   //Serial.println(timer);
+  
   Serial.print("Encoders L: ");
   Serial.print(LftEncdr.getRawPosition());
   Serial.print(", R: ");
   Serial.println(RgtEncdr.getRawPosition());
-  
-  if (timer < 1000){
+  /*
+  if (timer < 5000){
     LftSpeed = 1800;
     RgtSpeed = 1800;
     //Serial.println("move");
@@ -160,12 +162,12 @@ void loop(){
   
   LftMtr.writeMicroseconds(LftSpeed);
   RgtMtr.writeMicroseconds(RgtSpeed);
-  
-  Look();
+  */
+  /*Look();
   
   if(StartTracking){
     trackPosition();
-  }
+  }*/
 }
 //functions
 
@@ -190,13 +192,13 @@ void DebuggerModule(){
   
   #ifdef DEBUG_ENCODERS
 
-  LftPosition = LftEncdr.getRawPosition();
-  RgtPosition = RgtEncdr.getRawPosition();
+  LftMotorPos = LftEncdr.getRawPosition();
+  RgtMotorPos = RgtEncdr.getRawPosition();
 
   Serial.print("Encoders L: ");
-  Serial.print(LftPosition);
+  Serial.print(LftMotorPos);
   Serial.print(", R: ");
-  Serial.println(RgtPosition);
+  Serial.println(RgtMotorPos);
 
   #endif
 }
@@ -228,7 +230,8 @@ void Look() {
   //if detects tesseract stops and runs 'PickUp'
   //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
   //needs collision avoidance system -> runs 'Countermeasures'?
-  
+  LftEncdr.zero();
+  RgtEncdr.zero();
   //Step 1 -> turn left
   if(StartLooking){
     RgtMtr.write(RgtMtr.read() + WheelPerimeter);
@@ -269,39 +272,71 @@ void GoHome() {
   SvdLftPosition = LftEncdr.getRawPosition();
   SvdRgtPosition = RgtEncdr.getRawPosition();
   Position();
-  SvdTheta = atan(XPstn/YPstn);
-  while (Theta > SvdTheta + (3.14/16) && Theta <SvdTheta - (3.14/16)){
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
+  SvdTheta = (atan(XPstn/YPstn)*180)/3.14;
+  Serial.println(SvdTheta);
+  while (!(Theta < (SvdTheta +10) && Theta >(SvdTheta - 10))){
+    Serial.println("Alinging Bot...");
+    LftMtr.write(1500);
+    RgtMtr.write(1300);
     Position();
   }
   LftMtr.write(1500);
   RgtMtr.write(1500);
   int SvdLft = LftEncdr.getRawPosition();
-  while (LftEncdr.getRawPosition() < SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)){
-     LftMtr.write(1600);
-     RgtMtr.write(1600);
+  while (LftEncdr.getRawPosition() < (SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)+10)){
+     Serial.println("Moving towards origin...");
+     LftMtr.write(2000);
+     RgtMtr.write(2000);
   }
   
 };
 void Return() {
   //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+  //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
+  Position();
+  SvdTheta = SvdTheta + 180;
+  Serial.println(SvdTheta);
+  while (!(Theta < (SvdTheta +10) && Theta >(SvdTheta - 10))){
+    Serial.println("Alinging Bot...");
+    LftMtr.write(1500);
+    RgtMtr.write(1300);
+    Position();
+  }
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
+  int SvdLft = LftEncdr.getRawPosition();
+  while (LftEncdr.getRawPosition() < (SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)+10)){
+     Serial.println("Moving towards origin...");
+     LftMtr.write(2000);
+     RgtMtr.write(2000);
+  }
 }
 void Position(){
-  DstnceRgt = CF * (RgtEncdr.getRawPosition()); // Distance traveled by left Wheel 
-  Serial.println(DstnceRgt);
-  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by right wheel 
-  Serial.println(DstnceLft);
+  //Serial.println(CF,DEC);
+  //Serial.println(RgtEncdr.getRawPosition());
+  DstnceRgt = (CF * (RgtEncdr.getRawPosition())); // Distance traveled by right Wheel 
+  //Serial.println(DstnceRgt);
+  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by left wheel 
+  //Serial.println(DstnceLft);
   
   Dstnce = (DstnceRgt + DstnceLft)/2;
+  Serial.print("Distnace: ");
   Serial.println(Dstnce);
   
-  Theta = (DstnceLft - DstnceRgt)/175; // Change in orientation, taking starting postion as Theta = 0
+  Theta = ((DstnceLft - DstnceRgt)/109) *(180/3.14); // Change in orientation, taking starting postion as Theta = 0
+  if (Theta > 360){
+    Theta = Theta - 360;
+  } else if ( Theta < -360){
+    Theta = Theta + 360;
+  }
+  Serial.print("Theta: ");
   Serial.println(Theta);
   
   XPstn = Dstnce * cos(Theta);
   YPstn = Dstnce * sin(Theta);
-  Serial.println(XPstn);
+  Serial.print("X: ");
+  Serial.print(XPstn);
+  Serial.print( "Y: ");
   Serial.println(YPstn);
 }
 
@@ -311,14 +346,14 @@ void Check(){
   
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
 // Robo --> back and forth scanning motion
-LeftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
-RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
+LftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
+RgtMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
 int lastHallReading = analogRead(HallGrip);
 int LftEncoderCounter = LftEncdr.getRawPosition();
 int RgtEncoderCounter = RgtEncdr.getRawPosition();
  
-LeftMotorSpeed = 1650;
-LftMtr.writeMicroseconds(LeftMotorSpeed);
+LftMotorSpeed = 1650;
+LftMtr.writeMicroseconds(LftMotorSpeed);
 for(LftEncoderCounter; LftEncoderCounter < 50; LftEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Left Encoder Forward: ");
@@ -327,8 +362,8 @@ for(LftEncoderCounter; LftEncoderCounter < 50; LftEncoderCounter++){
     return;
   }
 }
-LeftMotorSpeed = 1350;
-LftMtr.writeMicroseconds(LeftMotorSpeed);
+LftMotorSpeed = 1350;
+LftMtr.writeMicroseconds(LftMotorSpeed);
 for(LftEncoderCounter; LftEncoderCounter > 0; LftEncoderCounter--){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Left Encoder Backward: ");
@@ -337,13 +372,13 @@ for(LftEncoderCounter; LftEncoderCounter > 0; LftEncoderCounter--){
     return;
   }
 }
-LeftMotorSpeed = 1500;
-LftMtr.writeMicroseconds(LeftMotorSpeed);
+LftMotorSpeed = 1500;
+LftMtr.writeMicroseconds(LftMotorSpeed);
 delay(200);
 
 
-RightMotorSpeed = 1650;
-RgtMtr.writeMicroseconds(RightMotorSpeed);
+RgtMotorSpeed = 1650;
+RgtMtr.writeMicroseconds(RgtMotorSpeed);
 for(RgtEncoderCounter; RgtEncoderCounter < 50; RgtEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Right Encoder Forward: ");
@@ -352,8 +387,8 @@ for(RgtEncoderCounter; RgtEncoderCounter < 50; RgtEncoderCounter++){
     return;
   }
 }
-RightMotorSpeed = 1350;
-RgtMtr.writeMicroseconds(RightMotorSpeed);
+RgtMotorSpeed = 1350;
+RgtMtr.writeMicroseconds(RgtMotorSpeed);
 for(RgtEncoderCounter; RgtEncoderCounter > 0; RgtEncoderCounter--){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Right Encoder Backward: ");
@@ -362,8 +397,8 @@ for(RgtEncoderCounter; RgtEncoderCounter > 0; RgtEncoderCounter--){
     return;
   }
 }
-RightMotorSpeed = 1500;
-RgtMtr.writeMicroseconds(RightMotorSpeed);
+RgtMotorSpeed = 1500;
+RgtMtr.writeMicroseconds(RgtMotorSpeed);
 delay(200);
 }
 void Move(){
