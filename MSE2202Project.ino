@@ -167,7 +167,7 @@ void loop() {
   Look();
   if (StartTracking) {
 
-    trackPosition();
+    TrackPosition();
   }
 }
 
@@ -215,11 +215,11 @@ void Ping(int x) {
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) / 58);
 }
 
-void readLineTracker() {
+void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
 }
 //Mode 1
-void trackPosition() {
+void TrackPosition() {
   if (EnableIncrement == false && LftMtr.read() <= 270) {
     EnableIncrement = true;
   }
@@ -278,7 +278,6 @@ void PickUp() {
   //robot has deteced tesseract in 'Look' and uses arm to pick it up, after picked up runs 'GoHome'
 
   //********something to determine position and save it*********
-
   HallLftRead = analogRead(HallLft);
   HallRgtRead = analogRead(HallRgt);
   if ((HallLftRead - HallIdle > 5) || (HallLftRead - HallIdle < -5)) {

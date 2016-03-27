@@ -1,0 +1,59 @@
+Firmware Documentation:
+The concept will have two modes: mode 1 and mode 2. The mode selection can be changed by pressing the reset button on the robot. Mode 1 will be used for retrieving tesseracts and placing them on the wall. Mode 2 will be used for picking up the tesseracts on the wall and placing them on the fixture.
+
+*The following is a summary of all functions incorporated in the program for the robot to achieve its design objectives.
+
+void DebuggerModule()
+All debugger code is located in this function block and various features can be debugged by uncommenting definitions at the top of the Arduino sketch.
+
+List of debuggers:
+
+DEBUG_HALL_SENSOR
+Prints to the serial monitor the inductance of the left, then right hall sensor in milligauss.
+
+DEBUG_ULTRASONIC
+Prints the current value of the ultrasonic data collection variables. This does not ping the sensors, but prints out the data from the most recent ping of each sensor.
+
+DEBUG_LINE_TRACKER
+Prints the current value of the light value obtained by the line tracker. This does not update the value, but prints out the data from the most recent readings.
+
+DEBUG_ENCODERS
+Prints out the position of both the left and right encoders located on the wheels. 
+
+void Ping1()
+Sends out a sonar pulse from the ultrasonic sensor pointed straight ahead.
+
+void Ping2()
+Sends out a sonar pulse from the ultrasonic sensor pointed laterally and mounted in front of the robot.
+
+void ReadLineTracker()
+Obtains and updates the value for the light level read by the line tracker sensor.
+
+*The following is a summary of all functions incorporated in the program for the robot to achieve its design objectives related specifically to mode 1.
+void Look()
+This is called when the robot is at the home position and needs to look for a tesseract. It begins by turning the robot to the left and heading straight until it either scans an inductive presence in the front or reaches a wall. 
+
+If the robot reaches a wall, it will turn to the right and continue. If it finds a magnetic inductance, it runs the Pickup() function. If it scans the presence of another robot, it will run the Countermeasures() function.
+
+void Countermeasures()
+This is run in instances where the robot interferes with another robot. After safe, the control signal is returned to Look().
+
+void Pickup()
+This is run after the robot has detected a tesseract in Look() and proceeds to center itself and pick up the tesseract. After picking up the tesseract, it runs GoHome().
+
+void GoHome()
+The robot saves its current coordinates and uses trigonometry to return to its home position. 
+
+void Return()
+This is after the tesseract has been placed. The processor uses trigonometry to identify the previous position the robot was at before it picked up the last tesseract. 
+
+void Position()
+This function tracks the position of the robot using the encoder values.
+
+*The following is a summary of all functions incorporated in the program for the robot to achieve its design objectives related specifically to mode 2.
+
+void Check()
+This allows the robot to continuously check if there is an available tesseract. It sends the robot into a oscillatory scanning motion until it appears in view. Afterwards, it runs Move() to position itself.
+
+void Move()
+The robot will position itself, pick up the tesseract, place it on the wall and continue to Check().
