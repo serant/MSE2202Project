@@ -1,4 +1,4 @@
-#include <CharliePlexM.h>
+ #include <CharliePlexM.h>
 #include <Servo.h>
 #include <I2CEncoder.h>
 #include <Wire.h>
@@ -87,12 +87,16 @@ unsigned long RightMotorOffset;
 // Tracking Variables
 long SvdLftPosition;
 long SvdRgtPosition;
+long RawLftPrv = 0;
+long RawRgtPrv = 0;
 const double CE = 637;//pulses per revolution 
 const double CF= ((3.14159*69.85)/CE); //Conversion factor, traslates encoder pulses to linear displacement
 double DstnceLft = 0;
 double DstnceRgt = 0; 
+long TotalDstnce = 0;
 double Dstnce = 0;
-double Theta = 0;
+double OrTheta = 0;
+double dTheta = 0;
 double SvdTheta = 0;
 double XPstn = 0;
 double YPstn = 0;
@@ -269,12 +273,11 @@ void PickUp() {
 }
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  SvdLftPosition = LftEncdr.getRawPosition();
-  SvdRgtPosition = RgtEncdr.getRawPosition();
   Position();
-  SvdTheta = (atan(XPstn/YPstn)*180)/3.14;
-  Serial.println(SvdTheta);
-  while (!(Theta < (SvdTheta +10) && Theta >(SvdTheta - 10))){
+  for (int i = 0; i>0; i++){
+    PolTheta = (atan(XPstn/YPstn)/PI)*180;
+  }
+  while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta - 5))){
     Serial.println("Alinging Bot...");
     LftMtr.write(1500);
     RgtMtr.write(1300);
@@ -282,12 +285,15 @@ void GoHome() {
   }
   LftMtr.write(1500);
   RgtMtr.write(1500);
-  int SvdLft = LftEncdr.getRawPosition();
-  while (LftEncdr.getRawPosition() < (SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)+10)){
+ 
+  while (Dsp > 10){
      Serial.println("Moving towards origin...");
      LftMtr.write(2000);
      RgtMtr.write(2000);
+     Position();
   }
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
   
 };
 void Return() {
@@ -305,41 +311,46 @@ void Return() {
   LftMtr.write(1500);
   RgtMtr.write(1500);
   int SvdLft = LftEncdr.getRawPosition();
-  while (LftEncdr.getRawPosition() < (SvdLft + ((sqrt((XPstn*XPstn) + (YPstn*YPstn)))/CF)+10)){
+  while (LftEncdr.getRawPosition() < (SvdLft + delta){
      Serial.println("Moving towards origin...");
      LftMtr.write(2000);
      RgtMtr.write(2000);
   }
 }
 void Position(){
-  //Serial.println(CF,DEC);
-  //Serial.println(RgtEncdr.getRawPosition());
-  DstnceRgt = (CF * (RgtEncdr.getRawPosition())); // Distance traveled by right Wheel 
-  //Serial.println(DstnceRgt);
-  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by left wheel 
-  //Serial.println(DstnceLft);
-  
-  Dstnce = (DstnceRgt + DstnceLft)/2;
+  // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
+
+  // Distance travelled 
+  DelRgt = (CF * ((RgtEncdr.getRawPosition()) - RawRgtPrev)); // Distance traveled by right Wheel 
+  DelLft = CF * ((LftEncdr.getRawPosition()- RawLftPrev)); // Distnace traveled by left wheel 
+  DelDsp = (DelRgt + DelLft)/2;
+  Dsp = Dsp + DelDsp;
   Serial.print("Distnace: ");
   Serial.println(Dstnce);
   
-  Theta = ((DstnceLft - DstnceRgt)/109) *(180/3.14); // Change in orientation, taking starting postion as Theta = 0
-  if (Theta > 360){
-    Theta = Theta - 360;
-  } else if ( Theta < -360){
-    Theta = Theta + 360;
+  dTheta = ((DelRgt - DelLft)/109) *(180/3.14); // Change in orientation, taking starting postion as Theta = 0
+  OrTheta = OrTheta + dTheta;
+  if (OrTheta > 360){
+    OrTheta = OrTheta - 360;
+  } else if ( OrTheta < -360){
+    OrTheta = OrTheta + 360;
   }
   Serial.print("Theta: ");
   Serial.println(Theta);
   
-  XPstn = Dstnce * cos(Theta);
-  YPstn = Dstnce * sin(Theta);
+  dXPstn = DelDsp * cos(OrTheta);
+  dYPstn = DelDsp * sin(ORTheta);
+  XPstn = XPstn + dXPstn;
+  YPstn = YPstn + dYPstn;
   Serial.print("X: ");
   Serial.print(XPstn);
   Serial.print( "Y: ");
   Serial.println(YPstn);
-}
 
+  RawLftPrv = LftEncdr.getRawPosition();
+  RawRgtPrv = RgtEncdr.getRawPosition();
+  PrevOrTheta = OrTheta;
+}
 
 //Mode 2
 void Check(){
