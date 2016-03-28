@@ -143,13 +143,46 @@ void setup() {
 }
 void loop() {
   DebuggerModule();
-
   int timer = millis();
+
+  switch(ModeIndex){
+    case 1:
+      Look();
+    break;
+    
+    case 2:
+      Countermeasures();
+    break;
+    
+    case 3:
+      PickUp();
+    break;
+    
+    case 4:
+      GoHome();
+    break;
+    
+    case 5:
+      Return();
+    break;
+    
+    case 6:
+      Check();
+    break;
+    
+    case 7:
+      Move();
+    break;
+    
+  }
+
   Position();
 
+  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS 
   //if(timer > 8000){
   //GoHome();
   //}
+  
 
   //Serial.println(timer);
   Serial.print("Encoders L: ");
