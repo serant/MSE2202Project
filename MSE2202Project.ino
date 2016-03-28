@@ -354,7 +354,44 @@ void GoHome() {
 
 };
 void Return() {
-  //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+  /*
+  robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+  This operates in the following steps:
+  
+  The following uses polar coordinates in R^2
+  
+  First conditional: rotates the robot until its angle matches the saved angle prior to returning to home
+  therefore: if( current angle is less than saved angle and if its distance from the home position is less than the distance from the saved position)
+  action: *robot will turn*
+  
+  Second conditional: robot will go to the saved point once it faces the correct direction
+  therefore: if the angle is greater or = to the saved angle (the robot should never surpass the angle by too much) and if its distance from
+                    the home position is less than the distance from the saved position
+  action: *robot moves forward*
+  
+  Third conditional: robot calls Look() once returning to the correct position
+  therefore: if the angle is greater or = to the saved angle and if its distance from the home position is greater than or equal to the saved position distance
+                    
+  */
+  Position();
+  
+  if((Theta < SvdTheta) && ( sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) < sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  {
+    LftMtr.write(1600);
+    RgtMtr.write(1400);
+  }
+  
+  else if((Theta >= SvdTheta) && (sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) < sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  {
+    LftMtr.write(1600);
+    RgtMtr.write(1600);
+  }
+  
+  else if ((Theta >= SvdTheta) && (sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) >= sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  {
+    Look();
+  }
+  
 }
 void Position() {
   DstnceRgt = CF * (RgtEncdr.getRawPosition()); // Distance traveled by left Wheel
