@@ -318,12 +318,19 @@ RightMotorSpeed = 1500;
 RgtMtr.writeMicroseconds(RightMotorSpeed);
 delay(200);
 }
+
+
 void Move(){
 //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
 bool WallDistance = false;
 int GripCounter;
+int DriveStraight = false;
+int FirstValue;
+int SecondValue;
+int StraightCount = false;
 
-while(WallDistance = false){ // approach wall
+
+while(WallDistance == false){ // approach wall
  Ping();
   if(UltrasonicDistance > 5){
     RightMotorSpeed = 1650;
@@ -332,13 +339,15 @@ while(WallDistance = false){ // approach wall
     RgtMtr.writeMicroseconds(RightMotorSpeed);
   }
   if(UltrasonicDistance < 5){
+    LftMtr.writeMicroseconds(1500);
+    RgtMtr.writeMicroseconds(1500);
     WallDistance = true;
   }
 }
 // Robot picks up tesseract
 Grip.writeMicroseconds(120); // open grip
 delay(300);
-ArmBend.writeMicroseconds(165);
+ArmBend.writeMicroseconds(165); // extend arm
 ArmBase.writeMicroseconds(165);
 delay(300);
 
@@ -348,12 +357,37 @@ while(analogRead(2) < 400){
 }
 Grip.writeMicroseconds(5); // close grip
 
-RightMotorSpeed = 1350;
+RightMotorSpeed = 1350; // back
 LeftMotorSpeed = 1350;
 LftMtr.writeMicroseconds(LeftMotorSpeed);
 RgtMtr.writeMicroseconds(RightMotorSpeed);
+delay(400);
+LftMtr.writeMicroseconds(1500);
+RgtMtr.writeMicroseconds(1500);
 
+LeftMotorSpeed = 1650; // turn right towards overhang
+LftMtr.writeMicroseconds(LeftMotorSpeed);
+delay(200);
+LftMtr.writeMicroseconds(1500);
 
+while(DriveStraight == false){
+  Ping();
+  if(StraightCount == false){
+    FirstValue = UltrasonicDistance;
+  }
+  SecondValue = UltrasonicDistance;
+  
+  if(SecondValue - FirstValue > 2){
+    RgtMtr.writeMicroseconds(1650);
+    delay(50);
+  }
+  if(SecondValue - FirstValue > -2){
+    LftMtr.writeMicroseconds(1650);
+    delay(50);
+  }
+  StraightCount = true;
+  FirstValue = SecondValue;
+}
 }
 
 
