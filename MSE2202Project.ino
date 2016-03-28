@@ -35,7 +35,7 @@ unsigned GripLightData = 0;
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
-
+unsigned long UltrasonicDistance2 = 0;
 Servo LftMtr;
 Servo ArmBend;
 Servo ArmBase;
@@ -71,6 +71,8 @@ const int HallGrip = A5;//********
 const int GripLight = A2;//********
 const int UltrasonicPing = 2;
 const int UltrasonicData = 3;
+const int UltrasonicPing2 = 9;
+const int UltrasonicData2 = 8;
 int MovFst = 2200;
 int Stop = 1600;
 
@@ -122,10 +124,12 @@ void setup() {
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicData, INPUT);
- 
+
+  pinMode(UltrasonicPing2, OUTPUT);
+  pinMode(UltrasonicData2, INPUT);
 }
 void loop(){
-  DebuggerModule();
+ /* DebuggerModule();
 
   
 
@@ -154,6 +158,8 @@ void loop(){
   if(StartTracking){
     trackPosition();
   }
+*/
+  Ping();
 }
 //functions
 
@@ -193,6 +199,16 @@ void Ping(){
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
   digitalWrite(UltrasonicPing, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(UltrasonicData, HIGH, 10000)/58);
+  Serial.print("Ultrasonic Distance: ");
+  Serial.println(UltrasonicDistance);
+}
+
+void Ping2(){
+   //Ping Ultrasonic
+  digitalWrite(UltrasonicPing2, HIGH);
+  delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
+  digitalWrite(UltrasonicPing2, LOW); //turns off the signal
+  UltrasonicDistance2 = (pulseIn(UltrasonicData2, HIGH, 10000)/58);
 }
 
 void readLineTracker(){
@@ -332,13 +348,15 @@ int StraightCount = false;
 
 while(WallDistance == false){ // approach wall
  Ping();
+ Serial.print("Ultrasonic Distance: ");
+ Serial.println(UltrasonicDistance);
   if(UltrasonicDistance > 5){
     RightMotorSpeed = 1650;
     LeftMotorSpeed = 1650;
     LftMtr.writeMicroseconds(LeftMotorSpeed);
     RgtMtr.writeMicroseconds(RightMotorSpeed);
   }
-  if(UltrasonicDistance < 5){
+  if(UltrasonicDistance > 5){
     LftMtr.writeMicroseconds(1500);
     RgtMtr.writeMicroseconds(1500);
     WallDistance = true;
@@ -371,11 +389,11 @@ delay(200);
 LftMtr.writeMicroseconds(1500);
 
 while(DriveStraight == false){
-  Ping();
+  Ping2();
   if(StraightCount == false){
-    FirstValue = UltrasonicDistance;
+    FirstValue = UltrasonicDistance2;
   }
-  SecondValue = UltrasonicDistance;
+  SecondValue = UltrasonicDistance2;
   
   if(SecondValue - FirstValue > 2){
     RgtMtr.writeMicroseconds(1650);
@@ -390,6 +408,18 @@ while(DriveStraight == false){
 }
 }
 
+
+void DropOff(){
+  ArmBend.writeMicroseconds(165); // extend arm uwards
+ArmBase.writeMicroseconds(165);
+delay(1000);
+
+while(analogRead(2) < 400){
+  LftMtr.writeMicroseconds(1350);
+  RgtMtr.writeMicroseconds(1350);
+}
+Grip.writeMicroseconds(120); // open grip
+}
 
 
 //requires timer system and tesseracts picked up counter 
