@@ -86,19 +86,25 @@ unsigned long RightMotorOffset;
 
 
 // Tracking Variables
-long SvdLftPosition;
-long SvdRgtPosition;
 const int CE = 637;//pulses per revolution
 const int CF = (3.14159 * 69.85) / CE; //Conversion factor, traslates encoder pulses to linear displacement
-int DstnceLft = 0;
-int DstnceRgt = 0;
-int Dstnce = 0;
-int Theta = 0;
-int SvdTheta = 0;
+
+int DelLft = 0;
+int DelRgt = 0;
+
+int Dsp = 0;
+int DelDsp = 0;
+int PrvDsp = 0;
+int FindDsp = 0;
+int DspBuffer = 5;
+
 int XPstn = 0;
 int YPstn = 0;
 
-
+int Theta = 0;
+int FindTheta = 0;
+int PickUpTheta = 0;
+int ThetaBuffer = 2;
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -335,23 +341,6 @@ void PickUp() {
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  SvdLftPosition = LftEncdr.getRawPosition();
-  SvdRgtPosition = RgtEncdr.getRawPosition();
-  Position();
-  SvdTheta = atan(XPstn / YPstn);
-  while (Theta > SvdTheta + (3.14 / 16) && Theta < SvdTheta - (3.14 / 16)) {
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
-    Position();
-  }
-  LftMtr.write(1500);
-  RgtMtr.write(1500);
-  int SvdLft = LftEncdr.getRawPosition();
-  while (LftEncdr.getRawPosition() < SvdLft + ((sqrt((XPstn * XPstn) + (YPstn * YPstn))) / CF)) {
-    LftMtr.write(1600);
-    RgtMtr.write(1600);
-  }
-
 };
 void Return() {
   /*
@@ -375,40 +364,26 @@ void Return() {
   */
   Position();
   
-  if((Theta < SvdTheta) && ( sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) < sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  if(((Theta < (FindTheta - ThetaBuffer)) || Theta > (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
   {
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
+    LeftMotorSpeed = 1400;
+    RightMotorSpeed = 1600;
   }
   
-  else if((Theta >= SvdTheta) && (sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) < sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
   {
-    LftMtr.write(1600);
-    RgtMtr.write(1600);
+    LeftMotorSpeed = MotorSpeed + LeftMotorOffset;
+    RightMotorSpeed = MotorSpeed + RightMotorOffset;
   }
   
-  else if ((Theta >= SvdTheta) && (sqrt((DstnceRgt*DstnceRgt)+(DstnceLft*DstnceLft)) >= sqrt((SvdLftPosition*CF*SvdLftPosition*CF)+(SvdRgtPosition*CF*SvdRgtPosition*CF))))
+  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp > (FindDsp - DspBuffer)) || Dsp < (FindDsp + DspBuffer)))
   {
-    Look();
+    //switch control signal to go back to Look();
   }
   
 }
 void Position() {
-  DstnceRgt = CF * (RgtEncdr.getRawPosition()); // Distance traveled by left Wheel
-  Serial.println(DstnceRgt);
-  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by right wheel
-  Serial.println(DstnceLft);
 
-  Dstnce = (DstnceRgt + DstnceLft) / 2;
-  Serial.println(Dstnce);
-
-  Theta = (DstnceLft - DstnceRgt) / 175; // Change in orientation, taking starting postion as Theta = 0
-  Serial.println(Theta);
-
-  XPstn = Dstnce * cos(Theta);
-  YPstn = Dstnce * sin(Theta);
-  Serial.println(XPstn);
-  Serial.println(YPstn);
 }
 
 
