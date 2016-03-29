@@ -86,6 +86,7 @@ unsigned long RightMotorOffset;
 
 
 // Tracking Variables
+<<<<<<< HEAD
 long RawLftPrv = 0;
 long RawRgtPrv = 0;
 const double CE = 637;//pulses per revolution 
@@ -104,6 +105,34 @@ double XPstn = 0;
 double dXPstn = 0;
 double YPstn = 0;
 double dYPstn = 0;
+=======
+const int CE = 637;//pulses per revolution
+const int CF = (3.14159 * 69.85) / CE; //Conversion factor, traslates encoder pulses to linear displacement
+
+int DelLft = 0;
+int DelRgt = 0;
+
+int Dsp = 0;
+int DelDsp = 0;
+int PrvDsp = 0;
+int FindDsp = 0;
+int DspBuffer = 5;
+
+int XPstn = 0;
+int YPstn = 0;
+
+int Theta = 0;
+int FindTheta = 0;
+int PickUpTheta = 0;
+int ThetaBuffer = 2;
+
+//Mode 1 Tesseract Placement Variables
+int StepIndex = 1;
+bool HitBlack = false;
+const int GripLightDark = 0;
+int HitBlackCount = 0;
+int HitBlackTarget = 3;
+>>>>>>> master
 
 void setup() {
   Serial.begin(9600);
@@ -142,13 +171,52 @@ void setup() {
 }
 void loop() {
   DebuggerModule();
-
   int timer = millis();
+
+  switch(ModeIndex){
+    case 1:
+      Look();
+    break;
+    
+    case 2:
+      Countermeasures();
+    break;
+    
+    case 3:
+      PickUp();
+    break;
+    
+    case 4:
+      GoHome();
+    break;
+    
+    case 5:
+      Return();
+    break;
+    
+    case 6:
+      Check();
+    break;
+    
+    case 7:
+      Move();
+    break;
+    
+  }
+
   Position();
 
+<<<<<<< HEAD
   if(timer > 8000){
     GoHome();
   }
+=======
+  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS 
+  //if(timer > 8000){
+  //GoHome();
+  //}
+  
+>>>>>>> master
 
   //Serial.println(timer);
   
@@ -346,6 +414,7 @@ void PickUp() {
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
+<<<<<<< HEAD
   Position();
   for (int i = 0; i>0; i++){
     PolTheta = (atan(XPstn/YPstn)/PI)*180;
@@ -425,6 +494,111 @@ void Position(){
   PrvOrTheta = OrTheta;
 }
 
+=======
+};
+void Return() {
+  /*
+  robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+  This operates in the following steps:
+  
+  The following uses polar coordinates in R^2
+  
+  First conditional: rotates the robot until its angle matches the saved angle prior to returning to home
+  therefore: if( current angle is less than saved angle and if its distance from the home position is less than the distance from the saved position)
+  action: *robot will turn*
+  
+  Second conditional: robot will go to the saved point once it faces the correct direction
+  therefore: if the angle is greater or = to the saved angle (the robot should never surpass the angle by too much) and if its distance from
+                    the home position is less than the distance from the saved position
+  action: *robot moves forward*
+  
+  Third conditional: robot calls Look() once returning to the correct position
+  therefore: if the angle is greater or = to the saved angle and if its distance from the home position is greater than or equal to the saved position distance
+                    
+  */
+  Position();
+  
+  if(((Theta < (FindTheta - ThetaBuffer)) || Theta > (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
+  {
+    LeftMotorSpeed = 1400;
+    RightMotorSpeed = 1600;
+  }
+  
+  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
+  {
+    LeftMotorSpeed = MotorSpeed + LeftMotorOffset;
+    RightMotorSpeed = MotorSpeed + RightMotorOffset;
+  }
+  
+  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp > (FindDsp - DspBuffer)) || Dsp < (FindDsp + DspBuffer)))
+  {
+    //switch control signal to go back to Look();
+  }
+  
+}
+void Position() {
+
+}
+
+void PlaceTesseract(){
+  /*
+  1. extend arm into scan mode
+  2. orient robot to be at 200 degree orientation
+  3. rotate counter clockwise until black hits 3 lines
+  4. place block, retract, return
+  5. update counter
+  6. next time count 2 black lines
+  7. place block, retract, return
+  8. update counter
+  9. next time ocunt 1 black line
+  10. place block, retract return
+  */
+  Position();
+  ReadLineTracker();
+  switch(StepIndex){
+    case 1:
+      ArmBend.write(0);
+      ArmBase.write(0);
+      Wrist.write(0);
+      
+      if(Theta < 200){
+        RightMotorSpeed = 1600;
+        LeftMotorSpeed = 1400;
+      }
+      else{
+        StepIndex = 2;
+      }
+    break;
+    
+    case 2:
+      RightMotorSpeed = 1600;
+      LeftMotorSpeed = 1400;
+      if((GripLightData < GripLightDark) && (!HitBlack)){
+        HitBlackCount++;
+        HitBlack = true;
+        if(HitBlackCount == HitBlackTarget){
+          StepIndex = 3;
+        }
+      }
+      
+      else if((GripLightData > GripLightDark) && (HitBlack)){
+        HitBlack = false;
+      }
+    break;
+    
+    case 3:
+      LeftMotorSpeed = 1500;
+      RightMotorSpeed = 1500;
+      ArmBend.write(0);
+      ArmBase.write(0);
+      Wrist.write(0);
+      Grip.write(0);
+      HitBlackCount = 0;
+      HitBlackTarget--;
+    break;
+  }
+}
+>>>>>>> master
 //Mode 2
 void Check() {
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
