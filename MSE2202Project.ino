@@ -12,6 +12,7 @@ unsigned long XPos = 0;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
+#define DEBUG_TRACKING
 
 //Flags/Switches
 bool StartLooking = true;
@@ -232,6 +233,26 @@ void DebuggerModule() {
 #ifdef DEBUG_HALL_SENSOR
   Serial.println((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000);
   Serial.println((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000);
+#endif
+
+#ifdef DEBUG_TRACKING
+  Serial.print("Displacement: ");
+  Serial.print(Dsp);
+  Serial.print("   , Polar Angle: ");
+  Serial.print(PolTheta);
+  Serial.print("   , Orientation Angle: ");
+  Serial.println(OrTheta);
+  
+  Serial.print("Cartesian: ");
+  Serial.print(XPstn);
+  Serial.print(", ");
+  Serial.println(YPstn);
+  
+  Serial.print("Instantaneous: ");
+  Serial.print(DelDsp);
+  Serial.print(", ");
+  Serial.print(dTheta);
+  Serial.print(" Deg");
 #endif
 
 #ifdef DEBUG_ULTRASONIC
