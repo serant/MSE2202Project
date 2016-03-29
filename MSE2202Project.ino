@@ -105,6 +105,14 @@ int Theta = 0;
 int FindTheta = 0;
 int PickUpTheta = 0;
 int ThetaBuffer = 2;
+
+//Mode 1 Tesseract Placement Variables
+int StepIndex = 1;
+bool HitBlack = false;
+const int GripLightDark = 0;
+int HitBlackCount = 0;
+int HitBlackTarget = 3;
+
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -419,7 +427,64 @@ void Position() {
 
 }
 
-
+void PlaceTesseract(){
+  /*
+  1. extend arm into scan mode
+  2. orient robot to be at 200 degree orientation
+  3. rotate counter clockwise until black hits 3 lines
+  4. place block, retract, return
+  5. update counter
+  6. next time count 2 black lines
+  7. place block, retract, return
+  8. update counter
+  9. next time ocunt 1 black line
+  10. place block, retract return
+  */
+  Position();
+  ReadLineTracker();
+  switch(StepIndex){
+    case 1:
+      ArmBend.write(0);
+      ArmBase.write(0);
+      Wrist.write(0);
+      
+      if(Theta < 200){
+        RightMotorSpeed = 1600;
+        LeftMotorSpeed = 1400;
+      }
+      else{
+        StepIndex = 2;
+      }
+    break;
+    
+    case 2:
+      RightMotorSpeed = 1600;
+      LeftMotorSpeed = 1400;
+      if((GripLightData < GripLightDark) && (!HitBlack)){
+        HitBlackCount++;
+        HitBlack = true;
+        if(HitBlackCount == HitBlackTarget){
+          StepIndex = 3;
+        }
+      }
+      
+      else if((GripLightData > GripLightDark) && (HitBlack)){
+        HitBlack = false;
+      }
+    break;
+    
+    case 3:
+      LeftMotorSpeed = 1500;
+      RightMotorSpeed = 1500;
+      ArmBend.write(0);
+      ArmBase.write(0);
+      Wrist.write(0);
+      Grip.write(0);
+      HitBlackCount = 0;
+      HitBlackTarget--;
+    break;
+  }
+}
 //Mode 2
 void Check() {
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
