@@ -136,7 +136,7 @@ void setup() {
  
 }
 void loop(){
- DebuggerModule();
+/* DebuggerModule();
 
   int timer = millis();
   Position();
@@ -169,6 +169,8 @@ void loop(){
 
     TrackPosition();
   }
+  */
+  Check();
 }
 //functions
 
@@ -382,10 +384,13 @@ RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
 int lastHallReading = analogRead(HallGrip);
 int LftEncoderCounter = LftEncdr.getRawPosition();
 int RgtEncoderCounter = RgtEncdr.getRawPosition();
+
+ArmBase.writeMicroseconds(150);
+ArmBend.writeMicroseconds(80);
  
 LeftMotorSpeed = 1650;
 LftMtr.writeMicroseconds(LeftMotorSpeed);
-for(LftEncoderCounter; LftEncoderCounter < 50; LftEncoderCounter++){
+for(LftEncoderCounter; LftEncoderCounter < 40; LftEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Left Encoder Forward: ");
   Serial.println(LftEncoderCounter);
@@ -410,7 +415,7 @@ delay(200);
 
 RightMotorSpeed = 1650;
 RgtMtr.writeMicroseconds(RightMotorSpeed);
-for(RgtEncoderCounter; RgtEncoderCounter < 50; RgtEncoderCounter++){
+for(RgtEncoderCounter; RgtEncoderCounter < 40; RgtEncoderCounter++){
   int currentHallReading = analogRead(HallGrip);
   Serial.print("Right Encoder Forward: ");
   Serial.println(RgtEncoderCounter);
@@ -446,13 +451,13 @@ int StraightCount = false;
 
 while(WallDistance == false){ // approach wall
  Ping(2);
-  if(UltrasonicDistance > 5){
+  if(UltrasonicDistance > 17){
     RightMotorSpeed = 1650;
     LeftMotorSpeed = 1650;
     LftMtr.writeMicroseconds(LeftMotorSpeed);
     RgtMtr.writeMicroseconds(RightMotorSpeed);
   }
-  if(UltrasonicDistance < 5){
+  if(UltrasonicDistance < 17){
     LftMtr.writeMicroseconds(1500);
     RgtMtr.writeMicroseconds(1500);
     WallDistance = true;
