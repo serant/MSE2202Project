@@ -459,7 +459,7 @@ while(WallDistance == false){ // approach wall
   }
 }
 // Robot picks up tesseract
-Grip.writeMicroseconds(120); // open grip
+Grip.writeMicroseconds(90); // open grip
 delay(300);
 ArmBend.writeMicroseconds(165); // extend arm
 ArmBase.writeMicroseconds(165);
@@ -469,7 +469,7 @@ while(analogRead(2) < 400){
   LeftMotorSpeed = 1425;
   LftMtr.writeMicroseconds(1425);
 }
-Grip.writeMicroseconds(5); // close grip
+Grip.writeMicroseconds(150); // close grip
 
 RightMotorSpeed = 1350; // back
 LeftMotorSpeed = 1350;
@@ -506,15 +506,15 @@ while(DriveStraight == false){
 
 
 void DropOff(){
-  ArmBend.writeMicroseconds(165); // extend arm uwards
-ArmBase.writeMicroseconds(165);
+  ArmBend.writeMicroseconds(90); // extend arm uwards
+ArmBase.writeMicroseconds(90);
 delay(1000);
 
 while(analogRead(2) < 400){
   LftMtr.writeMicroseconds(1350);
   RgtMtr.writeMicroseconds(1350);
 }
-Grip.writeMicroseconds(120); // open grip
+Grip.writeMicroseconds(90); // open grip
 }
 
 
