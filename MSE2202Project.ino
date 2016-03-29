@@ -69,17 +69,21 @@ unsigned long RightMotorOffset;
 
 
 // Tracking Variables
-long SvdLftPosition;
-long SvdRgtPosition;
 const int CE = 637;//pulses per revolution
 const int CF = (3.14159 * 69.85) / CE; //Conversion factor, traslates encoder pulses to linear displacement
-int DstnceLft = 0;
-int DstnceRgt = 0;
-int Dstnce = 0;
-int Theta = 0;
-int SvdTheta = 0;
+
+int DelLft = 0;
+int DelRgt = 0;
+
+int Dsp = 0;
+int DelDsp = 0;
+int PrvDsp = 0;
+int FindDsp = 0;
+int DspBuffer = 5;
+
 int XPstn = 0;
 int YPstn = 0;
+
 
 //pins /
 //remaining A1
@@ -157,9 +161,11 @@ void loop() {
   DebuggerModule();
   int timer = millis() / 1000;
 
+  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS
   //if(timer > 8000){
   //GoHome();
   //}
+
 
   if (timer % 1000 < 50) {
     Serial.print("mode  ");
@@ -183,12 +189,12 @@ void loop() {
       if (XPos < (CourseWidth - 100)) {
 
         if ((analogRead(HallLft) - NOFIELD > HallThreshold) || (analogRead(HallLft) - NOFIELD < -HallThreshold) || (analogRead(HallRgt) - NOFIELD > HallThreshold) || (analogRead(HallRgt) - NOFIELD < -HallThreshold)) {
-          RgtMtr.writeMicroseconds(ForwardSpeed+300);
-          LftMtr.writeMicroseconds(ForwardSpeed+300);
+          RgtMtr.writeMicroseconds(ForwardSpeed + 300);
+          LftMtr.writeMicroseconds(ForwardSpeed + 300);
           Serial.println("going");
         }
         else
-        Serial.println("detected tesseract");
+          Serial.println("detected tesseract");
         RgtMtr.writeMicroseconds(Stop);
         LftMtr.writeMicroseconds(Stop);
         delay(1000);
@@ -358,46 +364,26 @@ void PickUp() {
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  SvdLftPosition = LftEncdr.getRawPosition();
-  SvdRgtPosition = RgtEncdr.getRawPosition();
-  Position();
-  SvdTheta = atan(XPstn / YPstn);
-  while (Theta > SvdTheta + (3.14 / 16) && Theta < SvdTheta - (3.14 / 16)) {
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
-    Position();
-  }
-  LftMtr.write(1500);
-  RgtMtr.write(1500);
-  int SvdLft = LftEncdr.getRawPosition();
-  while (LftEncdr.getRawPosition() < SvdLft + ((sqrt((XPstn * XPstn) + (YPstn * YPstn))) / CF)) {
-    LftMtr.write(1600);
-    RgtMtr.write(1600);
-  }
-
 };
-void Return() {
-  //robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
-}
+
 void Position() {
-  DstnceRgt = CF * (RgtEncdr.getRawPosition()); // Distance traveled by left Wheel
-  Serial.println(DstnceRgt);
-  DstnceLft = CF * (LftEncdr.getRawPosition()); // Distnace traveled by right wheel
-  Serial.println(DstnceLft);
 
-  Dstnce = (DstnceRgt + DstnceLft) / 2;
-  Serial.println(Dstnce);
-
-  Theta = (DstnceLft - DstnceRgt) / 175; // Change in orientation, taking starting postion as Theta = 0
-  Serial.println(Theta);
-
-  XPstn = Dstnce * cos(Theta);
-  YPstn = Dstnce * sin(Theta);
-  Serial.println(XPstn);
-  Serial.println(YPstn);
 }
 
-
+void PlaceTesseract() {
+  /*
+    1. extend arm into scan mode
+    2. orient robot to be at 200 degree orientation
+    3. rotate counter clockwise until black hits 3 lines
+    4. place block, retract, return
+    5. update counter
+    6. next time count 2 black lines
+    7. place block, retract, return
+    8. update counter
+    9. next time ocunt 1 black line
+    10. place block, retract return
+  */
+}
 //Mode 2
 void Check() {
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
@@ -452,12 +438,10 @@ void Check() {
       return;
     }
   }
-  RightMotorSpeed = 1500;
-  RgtMtr.writeMicroseconds(RightMotorSpeed);
-  delay(200);
 }
-void Move() {
-  //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
-}
+  void Move() {
+    //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+  }
 
-//requires timer system and tesseracts picked up counter
+  //requires timer system and tesseracts picked up counter
+
