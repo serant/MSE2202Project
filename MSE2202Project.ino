@@ -53,7 +53,7 @@ I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
 
 //Mode Selector Variables
-unsigned int ModeIndex = 0;
+unsigned int ModeIndex = 4;
 unsigned int ModeIndicator[6] = {
   0x00, //Default Mode (Mode 0)
   0x00FF, //Mode 1
@@ -100,11 +100,11 @@ double DelRgt = 0;
 double DelDsp = 0; 
 long TotalDsp = 0;
 double SvdDsp = 0;
-double Dsp = 0;
+double Dsp = 1000;
 double OrTheta = 0;
 double PrvOrTheta = 0;
 double dTheta = 0;
-double PolTheta = 0;
+double PolTheta = 105;
 double FindTheta = 0;
 double PickUpTheta = 0;
 double XPstn = 0;
@@ -153,6 +153,8 @@ void setup() {
 void loop() {
   DebuggerModule();
   int timer = millis();
+  
+  //Temporary code for tracking testing=============================================//
 
   switch(ModeIndex){
     case 1:
