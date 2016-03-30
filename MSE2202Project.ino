@@ -17,6 +17,7 @@ unsigned long XPos = 0;
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
+
 bool TurnRight = true;
 
 //Hall Sensor Stuff
@@ -65,8 +66,8 @@ const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 6;
 const int ArmBendPin = 7;
-const int WristPin = 0;//********
-const int GripPin = 0;//********
+const int WristPin = 11;//********
+const int GripPin = 10;//********
 const int HallRgt = A5;
 const int HallLft = A4;
 const int HallGrip = A0;//********
@@ -125,6 +126,12 @@ void setup() {
 
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
+
+  pinMode(GripPin, OUTPUT);
+  Grip.attach(GripPin);
+
+  pinMode(WristPin, OUTPUT);
+  Wrist.attach(WristPin);
 
   // Set up encoders DO NOT CHANGE ORDER
   RgtEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
@@ -222,7 +229,19 @@ void loop() {
       TrackPosition();
     }
 */
-  Check();
+
+for (int i = 0; i < 180; i++){
+  Wrist.write(i);
+  Serial.print("Grip Value Up: ");
+  Serial.println(digitalRead(WristPin));
+}
+
+for (int k = 180; k > 0; k--){
+  Wrist.write(k);
+  Serial.print("Grip Value Down: ");
+  Serial.println(digitalRead(GripPin));
+}
+
 }
 //functions
 
@@ -265,6 +284,8 @@ void Ping(int x) {
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) / 58);
+   Serial.print("Ultrasonic distance: ");
+  Serial.println(UltrasonicDistance);
 }
 
 void ReadLineTracker() {
@@ -500,16 +521,16 @@ void Check() {
   int LftEncoderCounter = LftEncdr.getRawPosition();
   int RgtEncoderCounter = RgtEncdr.getRawPosition();
 
-  ArmBase.write(140); // 37 - 179 folded to out
-  ArmBend.write(50); // 0 -180 out to folded
+  ArmBase.write(100); // 37 - 179 folded to out
+  ArmBend.write(110); // 0 -180 out to folded
 
   LeftMotorSpeed = 1650;
   LftMtr.writeMicroseconds(LeftMotorSpeed);
   for (LftEncoderCounter; LftEncoderCounter < 40; LftEncoderCounter++) {
-    int currentHallReading = analogRead(HallGrip);
+    int currentHallReading = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
     Serial.print("Left Encoder Forward: ");
     Serial.println(LftEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
@@ -519,7 +540,7 @@ void Check() {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Left Encoder Backward: ");
     Serial.println(LftEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
@@ -534,7 +555,7 @@ void Check() {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Right Encoder Forward: ");
     Serial.println(RgtEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
@@ -544,7 +565,7 @@ void Check() {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Right Encoder Backward: ");
     Serial.println(RgtEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
@@ -565,8 +586,8 @@ void Move() {
 
 
   while (WallDistance == false) { // approach wall
-    Ping(2);
-    if (UltrasonicDistance > 17) {
+    Ping(UltrasonicPing);
+    if (UltrasonicDistance > 21) {
       RightMotorSpeed = 1650;
       LeftMotorSpeed = 1650;
       LftMtr.writeMicroseconds(LeftMotorSpeed);
@@ -585,7 +606,7 @@ void Move() {
   ArmBase.write(165);
   delay(300);
 
-  while (analogRead(2) < 400) {
+  while (analogRead(GripLight) < 950) { // 950 --> light, over 1000 --> dark
     LeftMotorSpeed = 1425;
     LftMtr.writeMicroseconds(1425);
   }
@@ -628,9 +649,10 @@ void Move() {
 void DropOff() {
   ArmBend.writeMicroseconds(90); // extend arm uwards
   ArmBase.writeMicroseconds(90);
+  Wrist.write(0); // 0 --> max upwards, 180 --> max downwards
   delay(1000);
 
-  while (analogRead(2) < 400) {
+  while (analogRead(2) > 950) { // over 1000 --> light, less than 500 -->dark
     LftMtr.writeMicroseconds(1350);
     RgtMtr.writeMicroseconds(1350);
   }
