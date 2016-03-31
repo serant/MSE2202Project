@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <uSTimer2.h>
 
-const unsigned long CourseWidth = 6000; //course width in mm
+unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
 //DEBUGGERS -> uncomment to debug
@@ -16,21 +16,17 @@ unsigned long XPos = 0;
 //Flags/Switches
 bool StartLooking = true;
 bool EnableIncrement = true;
-bool StartTracking = false;
-
 bool TurnRight = true;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
 const unsigned HallThreshold = 20; //<- NEEDS TO BE MEASURED
-unsigned int HallIdle;
 
 //Mechanical Information
 unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
-unsigned LftSpeed = 1600;
-unsigned RgtSpeed = 1600;
+unsigned Stop = 1600;
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
@@ -45,11 +41,11 @@ unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 
 Servo LftMtr;
-Servo ArmBend;
-Servo ArmBase;
+Servo ArmBend;    //out->folded 0 ->180
+Servo ArmBase;    //folded-> out 180->0
 Servo RgtMtr;
-Servo Grip;
-Servo Wrist;
+Servo Grip;       //150-155 closed, 90 open
+Servo Wrist;      //70 min folded, 180 straight out
 I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
 I2CEncoder ArmBaseEncdr;
@@ -71,17 +67,14 @@ const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 6;
 const int ArmBendPin = 7;
-const int WristPin = 11;//********
-const int GripPin = 10;//********
+const int WristPin = 11;
+const int GripPin = 10;
 const int HallRgt = A5;
 const int HallLft = A4;
-const int HallGrip = A0;//********
+const int HallGrip = A0;
 const int GripLight = A2;
 const int UltrasonicPing = 2;//data return in 3
 const int UltrasonicPingSide = 8;//data return in 9
-
-int MovFst = 2200;
-int Stop = 1600;
 
 // variables
 unsigned int MotorSpeed;
@@ -157,16 +150,69 @@ void setup() {
   pinMode (UltrasonicPingSide, OUTPUT);
   pinMode(UltrasonicPingSide + 1, INPUT);
 
+  Ping(UltrasonicPing);
+  CourseWidth = UltrasonicDistance * 10;  // course length in cm
+
+   if (digitalRead(13)) {
+    if (digitalRead(12)) {
+      ModeIndex = 2; // switch 3 and 1 on (down)
+    }
+    else ModeIndex = 1; // switch 3 off (up), 1 on (down)
+  }
+  else ModeIndex = 0; // switch 1 off(up)
+
+  
 }
 void loop() {
+  //***************************stuff running through every time
   DebuggerModule();
-  Position();
+  int timer = millis() / 1000;
 
+  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS 
+  //if(timer > 8000){
+  //GoHome();
+  //}
+  
 
-  Look();
-  if (StartTracking) {
+  if (timer % 1000 < 50) {
+    Serial.print("mode  ");
+    Serial.println(ModeIndex);
+  }
+  switch (ModeIndex) {
+    case 0: //******************************sitting around waiting, use this mode to test stuff, then clear
 
-    TrackPosition();
+      
+      break;
+
+    case 1: //**********************************mode 1 base
+      Serial.println("went to 1");
+      ModeIndex = 0;
+
+      break;
+
+    case 2:  //********************mode 2 base
+      Serial.println("went to 2");
+      ModeIndex = 0;
+      break;
+
+    case 3:
+
+      break;
+
+    case 4:
+
+      break;
+
+    case 5:
+
+      break;
+    case 6:
+
+      break;
+    case 7:
+
+      break;
+      //etc. add as needed
   }
 }
 
@@ -229,7 +275,7 @@ void TrackPosition() {
   }
 }
 //Mode 1
-void Look() {
+/*void Look() {
   //if already found tesseract-> run 'Return', else-> robot starts looking for tesseracts,
   //if detects tesseract stops and runs 'PickUp'
   //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
@@ -270,28 +316,26 @@ void Look() {
       }
     }
   }
-}
+}*/ ////this function is now run in main loop, can delete this, keeping only in case problems arise
+
 void Countermeasures() {
   //robot reacts to interference by other robot, after safe returns to 'Look'
 }
-unsigned HallLftRead, HallRgtRead;
+
 int turn;
 void PickUp() {
-  //robot has deteced tesseract in 'Look' and uses arm to pick it up, after picked up runs 'GoHome'
+  //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
 
-  //********something to determine position and save it*********
-  HallLftRead = analogRead(HallLft);
-  HallRgtRead = analogRead(HallRgt);
-  if ((HallLftRead - HallIdle > 5) || (HallLftRead - HallIdle < -5)) {
+  if ((analogRead(HallLft) - NOFIELD > 5) || (analogRead(HallLft) - NOFIELD < -5)) {
     turn = 1;//tess to left
   }
-  if ((HallRgtRead - HallIdle > 5) || (HallRgtRead - HallIdle < -5)) {
+  if ((analogRead(HallRgt) - NOFIELD > 5) || (analogRead(HallRgt) - NOFIELD < -5)) {
     if (turn == 1) turn = 3; // tess in middle
     else turn = 2;  // tess to right
   }
   switch (turn) {
     case 1:
-      RgtMtr.write(1450); ///this should align robot a bit to left  *******test #s
+      RgtMtr.write(1450); ///align robot a bit to left  *******test #s
       LftMtr.write(1400);
       delay(500);
       LftMtr.write(1800);
@@ -301,7 +345,7 @@ void PickUp() {
       RgtMtr.write(1600);
       break;
     case 2:
-      LftMtr.write(1450); ///should align robot bit to right **********test #s
+      LftMtr.write(1450); ///align robot bit to right **********test #s
       RgtMtr.write(1400);
       delay(500);
       LftMtr.write(1800);
@@ -312,7 +356,6 @@ void PickUp() {
       break;
     case 3:
       while (UltrasonicDistance != 5) { ///align tesseract in middle *******test #s, in cm
-        ////******want to use IR or some other form of distance? think it may work better, especially for small distance
         Ping(UltrasonicPingSide);
         LftMtr.write(1600);
         RgtMtr.write(1400);
@@ -321,16 +364,15 @@ void PickUp() {
         LftMtr.write(1500);
         RgtMtr.write(1500);
 
-        Grip.write(/*open*/100);  /////pick up tesseract *********test #s
-        Wrist.write(/*angled*/100);  //******* test #s
+        //Grip.write(/*open*/100);  /////pick up tesseract *********test #s
+        //Wrist.write(/*angled*/100);  //******* test #s
         ArmBase.write(110);      // 37 folded, 180 out
         ArmBend.write(150);    //180 folded, 0 out
         delay(500);
-        Grip.write(/*closed*/0);   ///*********  test #s
+        //Grip.write(/*closed*/0);   ///*********  test #s
         delay(500);
         ArmBase.write(40);
         ArmBend.write(160);
-
       }
   }
 }
