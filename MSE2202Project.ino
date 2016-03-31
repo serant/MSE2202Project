@@ -73,16 +73,18 @@ const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 6;
 const int ArmBendPin = 7;
-const int WristPin = 0;//********
-const int GripPin = 0;//********
-const int HallRgt = 0;
-const int HallLft = 0;
+const int WristPin = 10;//********
+const int GripPin = 11;//********
+const int HallRgt = A0;
+const int HallLft = A1;
+const int GripLight = A2;
+const int HallGrip = A3;//************
 const int ci_I2C_SDA = A4;         // I2C data = white
 const int ci_I2C_SCL = A5;         // I2C clock = yellow
-const int HallGrip = A0;//************
-const int GripLight = A2;
 const int UltrasonicPing = 2;//data return in 3
+//ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
+//ULTRASONIC SIDE DATA RETURN ON D9
 
 int MovFst = 2200;
 int Stop = 1600;
