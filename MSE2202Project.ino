@@ -68,7 +68,7 @@ unsigned int ModeIndicator[6] = {
   0xFFFF
 };
 
-//pins
+//pins FINALIZED DO NOT CHANGE THIS///////////////////
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 6;
@@ -584,7 +584,9 @@ void Check() {
 void Move() {
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
 }
-
+void PIDSpeed(unsigned RPM){
+  
+}
 
 
 //requires timer system and tesseracts picked up counter
