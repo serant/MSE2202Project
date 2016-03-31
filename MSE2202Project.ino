@@ -3,7 +3,7 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-
+#include <PID_v1.h>
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
@@ -38,6 +38,16 @@ unsigned GripLightData = 0;
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 
+//PID Control
+double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
+double RightSpeed, RightPower, LeftSpeed;
+double Kp = 2.3, Ki = 1, Kd = 1;
+PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
+PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
+PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
+unsigned long prevTime = 0;
+unsigned long currentTime = 0;
+
 Servo LftMtr;
 Servo ArmBend;
 Servo ArmBase;
@@ -65,8 +75,10 @@ const int ArmBasePin = 6;
 const int ArmBendPin = 7;
 const int WristPin = 0;//********
 const int GripPin = 0;//********
-const int HallRgt = A5;
-const int HallLft = A4;
+const int HallRgt = 0;
+const int HallLft = 0;
+const int ci_I2C_SDA = A4;         // I2C data = white
+const int ci_I2C_SCL = A5;         // I2C clock = yellow
 const int HallGrip = A0;//************
 const int GripLight = A2;
 const int UltrasonicPing = 2;//data return in 3
@@ -147,13 +159,36 @@ void setup() {
   pinMode(UltrasonicPingSide + 1, INPUT);
 
   HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
-
+  
+  leftPid.SetMode(AUTOMATIC);
+  rightPid.SetMode(AUTOMATIC);
+  motorPID.SetMode(AUTOMATIC);
+  motorPID.SetOutputLimits(1600,1800);
+  motorPID.SetSampleTime(30);
 }
 void loop() {
-  DebuggerModule();
-  int timer = millis();
 
-  switch(ModeIndex){
+  //DebuggerModule();
+  //targetSpeed = 30; //rpm
+  
+  LftMtr.writeMicroseconds(1700);
+  LeftSpeed = LftEncdr.getSpeed();
+  RightSpeed = RgtEncdr.getSpeed();
+  
+  motorPID.Compute();
+  RgtMtr.writeMicroseconds(RightPower);
+  
+  
+  
+  //targetSpeed = LftEncdr.getSpeed();
+  Serial.print("Left Input: ");
+  Serial.println(LeftSpeed);
+  Serial.print("Current Right Speed: ");
+  Serial.println(RightSpeed);
+  Serial.print("Current Right Power: ");
+  Serial.println(RightPower);
+  
+  /*switch(ModeIndex){
     case 1:
       Look();
     break;
@@ -161,7 +196,7 @@ void loop() {
     case 2:
       Countermeasures();
     break;
-    
+    sub
     case 3:
       PickUp();
     break;
@@ -215,7 +250,7 @@ void loop() {
   if (StartTracking) {
 
     TrackPosition();
-  }
+  }*/
 }
 
 
