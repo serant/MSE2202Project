@@ -41,7 +41,7 @@ unsigned long UltrasonicDistance = 0;
 //PID Control
 double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
 double RightSpeed, RightPower, LeftSpeed;
-double Kp = 2.3, Ki = 1, Kd = 1;
+double Kp = 0.30, Ki = 1, Kd = 1;
 PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
@@ -71,16 +71,16 @@ unsigned int ModeIndicator[6] = {
 //pins FINALIZED DO NOT CHANGE THIS///////////////////
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
-const int ArmBasePin = 6;
-const int ArmBendPin = 7;
+const int ArmBasePin = 26;
+const int ArmBendPin = 27;
 const int WristPin = 10;//********
 const int GripPin = 11;//********
 const int HallRgt = A0;
 const int HallLft = A1;
 const int GripLight = A2;
 const int HallGrip = A3;//************
-const int ci_I2C_SDA = A4;         // I2C data = white
-const int ci_I2C_SCL = A5;         // I2C clock = yellow
+const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
+const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
 const int UltrasonicPing = 2;//data return in 3
 //ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
@@ -145,10 +145,10 @@ void setup() {
   LftEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
 
-  pinMode(ArmBasePin, OUTPUT);
+  //pinMode(ArmBasePin, OUTPUT);
   ArmBase.attach(ArmBasePin); // 37 folded, 180 out
 
-  pinMode(ArmBendPin, OUTPUT);
+  //pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin); // 180 folded, 0 out
   pinMode(7, INPUT);
 
@@ -169,6 +169,8 @@ void setup() {
   motorPID.SetSampleTime(30);
 }
 void loop() {
+  ArmBase.write(37);
+  ArmBend.write(180);
 
   //DebuggerModule();
   //targetSpeed = 30; //rpm
