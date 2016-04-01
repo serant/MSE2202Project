@@ -15,6 +15,7 @@ bool StartLooking = true;
 bool EnableIncrement = true;
 bool TurnRight = true;
 int AnyUse;
+unsigned pickedUp;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
@@ -179,7 +180,7 @@ void loop() {
   DebuggerModule();
   timer = millis() / 1000; //time in seconds
 
-  if (timer >= 240) {  //4 min timelimit
+  if (timer >= 240) {  //4 min time limit 
     GoHome(0);
   }
 
@@ -624,6 +625,8 @@ void PlaceTesseract() {
       HitBlackTarget--;
       break;
   }
+  pickedUp++;
+  if(pickedUp = 3) ModeIndex = 0;
 }
 
 //Mode 2
@@ -779,4 +782,12 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   delay(100);
   ArmBend.writeMicroseconds(180); //fold up arm
   ArmBase.writeMicroseconds(37);
+
+  for (int i = millis(); i - millis() < 2000; i = millis()) {
+  LftMtr.writeMicroseconds(1400);
+    RgtMtr.writeMicroseconds(1400);
+  }
+  LftMtr.writeMicroseconds (1500);
+  RgtMtr.writeMicroseconds(1500);
+  pickedUp++;
 }
