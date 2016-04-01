@@ -12,7 +12,7 @@ unsigned long XPos = 0;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
-#define DEBUG_PID
+//#define DEBUG_PID
 
 //Flags/Switches
 bool StartLooking = true;
@@ -29,8 +29,8 @@ unsigned int HallIdle;
 //Mechanical Information
 unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
-unsigned LftSpeed = 1600;
-unsigned RgtSpeed = 1600;
+unsigned LftSpeed = 0;
+unsigned RgtSpeed = 0;
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
 unsigned GripLightData = 0;
@@ -42,10 +42,10 @@ unsigned long UltrasonicDistance = 0;
 //PID Control
 double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
 double RightSpeed, RightPower, LeftSpeed;
-double Kp = 21, Ki = 70, Kd = 0.089;
+double Kp = 11.9, Ki =100, Kd = 0.00001;
 PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
-
+int k = 10;
 
 PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
 unsigned long prevTime = 0;
@@ -170,12 +170,12 @@ void setup() {
   rightPid.SetMode(AUTOMATIC);
   motorPID.SetMode(AUTOMATIC);
   motorPID.SetOutputLimits(1570,1830);
-  motorPID.SetSampleTime(30);
+  motorPID.SetSampleTime(10);
 }
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
-  PIDSpeed(1700);
+  motorAccelerate(1700);
 }
 
 
@@ -214,7 +214,7 @@ void DebuggerModule() {
 #endif
 
 #ifdef DEBUG_PID
-  if((millis() - prevTime) >=35){
+  if((millis() - prevTime) >=12){
     prevTime = millis();
     Serial.print("Left Input: ");
     Serial.println(LeftSpeed);
@@ -519,13 +519,24 @@ void Check() {
 void Move() {
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
 }
-void PIDSpeed(unsigned uSSpeed){
+void motorAccelerate(unsigned uSSpeed){
   
-  LftMtr.writeMicroseconds(uSSpeed);
+  for(k; k > 1; k--){
+    motorPID.SetSampleTime(10);
+    PIDSpeed(constrain((1500+((uSSpeed-1500)/k)), 1500, 2100));
+    Serial.println(constrain((1500+((uSSpeed-1500)/k)), 1500, 2100));
+  }
+  motorPID.SetSampleTime(10);
+  PIDSpeed(uSSpeed);
+}
+void PIDSpeed(unsigned uSSpeed){
+
   LeftSpeed = LftEncdr.getSpeed();
   RightSpeed = RgtEncdr.getSpeed();
   
   motorPID.Compute();
+  
+  LftMtr.writeMicroseconds(uSSpeed);
   RgtMtr.writeMicroseconds(RightPower);
 }
 
