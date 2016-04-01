@@ -12,6 +12,7 @@ unsigned long XPos = 0;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
+#define DEBUG_PID
 
 //Flags/Switches
 bool StartLooking = true;
@@ -41,9 +42,11 @@ unsigned long UltrasonicDistance = 0;
 //PID Control
 double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
 double RightSpeed, RightPower, LeftSpeed;
-double Kp = 52, Ki = 1.7, Kd = 0.005;
+double Kp = 21, Ki = 70, Kd = 0.089;
 PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
+
+
 PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
 unsigned long prevTime = 0;
 unsigned long currentTime = 0;
@@ -170,94 +173,9 @@ void setup() {
   motorPID.SetSampleTime(30);
 }
 void loop() {
-
-  //DebuggerModule();
-  //targetSpeed = 30; //rpm
-  for(i; i<1; i++)
-  {
-    RgtMtr.writeMicroseconds(1700);
-  }
-  LftMtr.writeMicroseconds(1700);
-  LeftSpeed = LftEncdr.getSpeed();
-  RightSpeed = RgtEncdr.getSpeed();
-  
-  motorPID.Compute();
-  RgtMtr.writeMicroseconds(RightPower);
-  
-  //targetSpeed = LftEncdr.getSpeed();
-  if((millis() - prevTime) >=35){
-    prevTime = millis();
-    Serial.print("Left Input: ");
-    Serial.println(LeftSpeed);
-    Serial.print("Current Right Speed: ");
-    Serial.println(RightSpeed);
-    Serial.print("Current Right Power: ");
-    Serial.println(RightPower);
-  }
-  
-  /*switch(ModeIndex){
-    case 1:
-      Look();
-    break;
-    
-    case 2:
-      Countermeasures();
-    break;
-    sub
-    case 3:
-      PickUp();
-    break;
-    
-    case 4:
-      GoHome();
-    break;
-    
-    case 5:
-      Return();
-    break;
-    
-    case 6:
-      Check();
-    break;
-    
-    case 7:
-      Move();
-    break;
-    
-  }
-
-  Position();
-
-  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS 
-  //if(timer > 8000){
-  //GoHome();
-  //}
-  
-
-  //Serial.println(timer);
-  Serial.print("Encoders L: ");
-  Serial.print(LftEncdr.getRawPosition());
-  Serial.print(", R: ");
-  Serial.println(RgtEncdr.getRawPosition());
-
-  if (timer < 1000) {
-    LftSpeed = 1800;
-    RgtSpeed = 1800;
-    //Serial.println("move");
-  } else {
-    LftSpeed = 1500;
-    RgtSpeed = 1500;
-  }
-  //Serial.print(lftspeed);
-
-  LftMtr.writeMicroseconds(LftSpeed);
-  RgtMtr.writeMicroseconds(RgtSpeed);
-
-  Look();
-  if (StartTracking) {
-
-    TrackPosition();
-  }*/
+  //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
+  DebuggerModule();
+  PIDSpeed(1700);
 }
 
 
@@ -293,6 +211,18 @@ void DebuggerModule() {
   Serial.print(", R: ");
   Serial.println(RgtPosition);
 
+#endif
+
+#ifdef DEBUG_PID
+  if((millis() - prevTime) >=35){
+    prevTime = millis();
+    Serial.print("Left Input: ");
+    Serial.println(LeftSpeed);
+    Serial.print("Current Right Speed: ");
+    Serial.println(RightSpeed);
+    Serial.print("Current Right Power: ");
+    Serial.println(RightPower);
+  }
 #endif
 }
 
@@ -589,8 +519,14 @@ void Check() {
 void Move() {
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
 }
-void PIDSpeed(unsigned RPM){
+void PIDSpeed(unsigned uSSpeed){
   
+  LftMtr.writeMicroseconds(uSSpeed);
+  LeftSpeed = LftEncdr.getSpeed();
+  RightSpeed = RgtEncdr.getSpeed();
+  
+  motorPID.Compute();
+  RgtMtr.writeMicroseconds(RightPower);
 }
 
 
