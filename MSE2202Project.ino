@@ -18,6 +18,7 @@ unsigned long XPos = 0;
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
+
 bool TurnRight = true;
 
 //Hall Sensor Stuff
@@ -31,9 +32,14 @@ unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
 unsigned LftSpeed = 0;
 unsigned RgtSpeed = 0;
+
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
 unsigned GripLightData = 0;
+unsigned GripLightDark = 0;
+bool HitBlack = false;
+int HitBlackCount = 0;
+int HitBlackTarget = 3;
 
 //Data variables
 unsigned long HallSensorValue = 0;
@@ -48,6 +54,8 @@ Servo Grip;
 Servo Wrist;
 I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
+I2CEncoder ArmBaseEncdr;
+I2CEncoder ArmBendEncdr;
 
 //Mode Selector Variables
 unsigned int ModeIndex = 0;
@@ -69,6 +77,7 @@ const int WristPin = 10;//********
 const int GripPin = 11;//********
 const int HallRgt = A0;
 const int HallLft = A1;
+
 const int GripLight = A2;
 const int HallGrip = A3;//************
 const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
@@ -83,10 +92,10 @@ int Stop = 1600;
 
 // variables
 unsigned int MotorSpeed;
-unsigned int LeftMotorSpeed;
-unsigned int RightMotorSpeed;
-unsigned int LefftMotorPos;
-unsigned int RightMotorPos;
+unsigned int LftMotorSpeed;
+unsigned int RgtMotorSpeed;
+unsigned int LftMotorPos;
+unsigned int RgtMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
@@ -102,33 +111,30 @@ unsigned long currentTime = 0;
 int i = 0;
 
 // Tracking Variables
-const int CE = 637;//pulses per revolution
-const int CF = (3.14159 * 69.85) / CE; //Conversion factor, traslates encoder pulses to linear displacement
+long RawLftPrv = 0;
+long RawRgtPrv = 0;
+const double CE = 637;//pulses per revolution
+const double CF = ((3.14159 * 69.85) / CE); //Conversion factor, traslates encoder pulses to linear displacement
+double DelLft = 0;
+double DelRgt = 0;
+double DelDsp = 0;
+long TotalDsp = 0;
+double SvdDsp = 0;
+double Dsp = 0;
+double OrTheta = 0;
+double PrvOrTheta = 0;
+double dTheta = 0;
+double PolTheta = 0;
+double FindTheta = 0;
+double PickUpTheta = 0;
+double XPstn = 0;
+double dXPstn = 0;
+double YPstn = 0;
+double dYPstn = 0;
 
-int DelLft = 0;
-int DelRgt = 0;
-
-int Dsp = 0;
-int DelDsp = 0;
-int PrvDsp = 0;
-int FindDsp = 0;
-int DspBuffer = 5;
-
-int XPstn = 0;
-int YPstn = 0;
-
-int Theta = 0;
-int FindTheta = 0;
-int PickUpTheta = 0;
-int ThetaBuffer = 2;
-
-//Mode 1 Tesseract Placement Variables
+double ThetaBuffer = 2;
+double DspBuffer = 10;
 int StepIndex = 1;
-bool HitBlack = false;
-const int GripLightDark = 0;
-int HitBlackCount = 0;
-int HitBlackTarget = 3;
-
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -140,6 +146,12 @@ void setup() {
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
 
+  pinMode(GripPin, OUTPUT);
+  Grip.attach(GripPin);
+
+  pinMode(WristPin, OUTPUT);
+  Wrist.attach(WristPin);
+
   // Set up encoders DO NOT CHANGE ORDER
   RgtEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
@@ -147,11 +159,12 @@ void setup() {
   LftEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
 
-  //pinMode(ArmBasePin, OUTPUT);
-  ArmBase.attach(ArmBasePin); // 37 folded, 180 out
+  pinMode(ArmBasePin, OUTPUT);
+  ArmBase.attach(ArmBasePin);
 
-  //pinMode(ArmBendPin, OUTPUT);
-  ArmBend.attach(ArmBendPin); // 180 folded, 0 out
+  pinMode(ArmBendPin, OUTPUT);
+  ArmBend.attach(ArmBendPin);
+  
   pinMode(7, INPUT);
 
   pinMode(GripLight, INPUT);
@@ -167,13 +180,20 @@ void setup() {
   mtrPID.SetMode(AUTOMATIC);
   mtrPID.SetOutputLimits(1570,1830);
   mtrPID.SetSampleTime(10);
+
 }
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
-  motorAccelerate(1700);
-}
+  Position();
 
+
+  Look();
+  if (StartTracking) {
+
+    TrackPosition();
+  }
+}
 
 //functions
 
@@ -199,13 +219,13 @@ void DebuggerModule() {
 
 #ifdef DEBUG_ENCODERS
 
-  LftPosition = LftEncdr.getRawPosition();
-  RgtPosition = RgtEncdr.getRawPosition();
+  LftMotorPos = LftEncdr.getRawPosition();
+  RgtMotorPos = RgtEncdr.getRawPosition();
 
   Serial.print("Encoders L: ");
-  Serial.print(LftPosition);
+  Serial.print(LftMotorPos);
   Serial.print(", R: ");
-  Serial.println(RgtPosition);
+  Serial.println(RgtMotorPos);
 
 #endif
 
@@ -228,6 +248,8 @@ void Ping(int x) {
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) / 58);
+  Serial.print("Ultrasonic distance: ");
+  Serial.println(UltrasonicDistance);
 }
 
 void ReadLineTracker() {
@@ -249,6 +271,9 @@ void Look() {
   //if detects tesseract stops and runs 'PickUp'
   //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
   //needs collision avoidance system -> runs 'Countermeasures'?
+
+  LftEncdr.zero();
+  RgtEncdr.zero();
 
   //Step 1 -> turn left
   if (StartLooking) {
@@ -286,7 +311,6 @@ void Look() {
 void Countermeasures() {
   //robot reacts to interference by other robot, after safe returns to 'Look'
 }
-
 unsigned HallLftRead, HallRgtRead;
 int turn;
 void PickUp() {
@@ -348,177 +372,314 @@ void PickUp() {
   }
 }
 
+void Position() {
+  // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
+
+  // Distance travelled
+  DelRgt = (CF * ((RgtEncdr.getRawPosition()) - RawRgtPrv)); // Instantaneous Distance traveled by right Wheel
+  DelLft = CF * ((LftEncdr.getRawPosition() - RawLftPrv)); // Instantaneous Distnace traveled by left wheel
+  DelDsp = (DelRgt + DelLft) / 2; //Instantaneous Distance traveled by the centerpoint of the robot
+  Dsp = Dsp + DelDsp; //Current Displacement
+  Serial.print("Displacement: ");
+  Serial.println(Dsp);
+
+  dTheta = ((DelRgt - DelLft) / 109) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
+  OrTheta = OrTheta + dTheta; //Orientation of robot
+  OrTheta = (int)OrTheta % 360; //If the magnitude of the orientation is greater than 360
+
+  Serial.print("Orientation Theta: ");
+  Serial.println(OrTheta);
+
+  dXPstn = DelDsp * cos(OrTheta * PI / 180);
+  dYPstn = DelDsp * sin(OrTheta * PI / 180);
+  XPstn = XPstn + dXPstn;
+  YPstn = YPstn + dYPstn;
+  Serial.print("X: ");//X coordinates of the robot (right is positive)
+  Serial.print(XPstn);
+  Serial.print( "Y: ");//Y coordinates of the robot (up is positive)
+  PolTheta = atan(YPstn / XPstn * 180 / PI); //The polar angle of the position of the robot
+
+  RawLftPrv = LftEncdr.getRawPosition();
+  RawRgtPrv = RgtEncdr.getRawPosition();
+  PrvOrTheta = OrTheta;
+}
+
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-};
+  Position();
+  for (int i = 0; i > 0; i++) {
+
+    SvdDsp = Dsp;
+  }
+  while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta - 5))) {
+    Serial.println("Alinging Bot...");
+    LftMtr.write(1500);
+    RgtMtr.write(1300);
+    Position();
+  }
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
+
+  while (Dsp > 10) {
+    Serial.println("Moving towards origin...");
+    LftMtr.write(2000);
+    RgtMtr.write(2000);
+    Position();
+  }
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
+
+}
+
+
 void Return() {
   /*
-  robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
-  This operates in the following steps:
-  
-  The following uses polar coordinates in R^2
-  
-  First conditional: rotates the robot until its angle matches the saved angle prior to returning to home
-  therefore: if( current angle is less than saved angle and if its distance from the home position is less than the distance from the saved position)
-  action: *robot will turn*
-  
-  Second conditional: robot will go to the saved point once it faces the correct direction
-  therefore: if the angle is greater or = to the saved angle (the robot should never surpass the angle by too much) and if its distance from
+    robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
+    This operates in the following steps:
+
+    The following uses polar coordinates in R^2
+
+    First conditional: rotates the robot until its angle matches the saved angle prior to returning to home
+    therefore: if( current angle is less than saved angle and if its distance from the home position is less than the distance from the saved position)
+    action: *robot will turn*
+
+    Second conditional: robot will go to the saved point once it faces the correct direction
+    therefore: if the angle is greater or = to the saved angle (the robot should never surpass the angle by too much) and if its distance from
                     the home position is less than the distance from the saved position
-  action: *robot moves forward*
-  
-  Third conditional: robot calls Look() once returning to the correct position
-  therefore: if the angle is greater or = to the saved angle and if its distance from the home position is greater than or equal to the saved position distance
-                    
+    action: *robot moves forward*
+
+    Third conditional: robot calls Look() once returning to the correct position
+    therefore: if the angle is greater or = to the saved angle and if its distance from the home position is greater than or equal to the saved position distance
+
   */
   Position();
-  
-  if(((Theta < (FindTheta - ThetaBuffer)) || Theta > (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
+  if (((OrTheta < (FindTheta - ThetaBuffer)) || OrTheta > (FindTheta + ThetaBuffer)) && ((Dsp < (SvdDsp - DspBuffer)) || Dsp > (SvdDsp + DspBuffer)))
   {
-    LeftMotorSpeed = 1400;
-    RightMotorSpeed = 1600;
+    LftMotorSpeed = 1400;
+    RgtMotorSpeed = 1600;
   }
-  
-  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp < (FindDsp - DspBuffer)) || Dsp > (FindDsp + DspBuffer)))
+
+  else if (((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp < (SvdDsp - DspBuffer)) || Dsp > (SvdDsp + DspBuffer)))
   {
-    LeftMotorSpeed = MotorSpeed + LeftMotorOffset;
-    RightMotorSpeed = MotorSpeed + RightMotorOffset;
+    LftMotorSpeed = MotorSpeed + LeftMotorOffset;
+    RgtMotorSpeed = MotorSpeed + RightMotorOffset;
   }
-  
-  else if(((Theta > (FindTheta - ThetaBuffer)) || Theta < (FindTheta + ThetaBuffer)) && ((Dsp > (FindDsp - DspBuffer)) || Dsp < (FindDsp + DspBuffer)))
+
+  else if (((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp > (SvdDsp - DspBuffer)) || Dsp < (SvdDsp + DspBuffer)))
   {
     //switch control signal to go back to Look();
   }
-  
-}
-void Position() {
 
 }
 
-void PlaceTesseract(){
+void PlaceTesseract() {
   /*
-  1. extend arm into scan mode
-  2. orient robot to be at 200 degree orientation
-  3. rotate counter clockwise until black hits 3 lines
-  4. place block, retract, return
-  5. update counter
-  6. next time count 2 black lines
-  7. place block, retract, return
-  8. update counter
-  9. next time ocunt 1 black line
-  10. place block, retract return
+    1. extend arm into scan mode
+    2. orient robot to be at 200 degree orientation
+    3. rotate counter clockwise until black hits 3 lines
+    4. place block, retract, return
+    5. update counter
+    6. next time count 2 black lines
+    7. place block, retract, return
+    8. update counter
+    9. next time ocunt 1 black line
+    10. place block, retract return
   */
   Position();
   ReadLineTracker();
-  switch(StepIndex){
+  switch (StepIndex) {
     case 1:
       ArmBend.write(0);
       ArmBase.write(0);
       Wrist.write(0);
-      
-      if(Theta < 200){
-        RightMotorSpeed = 1600;
-        LeftMotorSpeed = 1400;
+
+      if (OrTheta < 200) {
+        RgtMotorSpeed = 1600;
+        LftMotorSpeed = 1400;
       }
-      else{
+      else {
         StepIndex = 2;
       }
-    break;
-    
+      break;
+
     case 2:
-      RightMotorSpeed = 1600;
-      LeftMotorSpeed = 1400;
-      if((GripLightData < GripLightDark) && (!HitBlack)){
+      RgtMotorSpeed = 1600;
+      LftMotorSpeed = 1400;
+      if ((GripLightData < GripLightDark) && (!HitBlack)) {
         HitBlackCount++;
         HitBlack = true;
-        if(HitBlackCount == HitBlackTarget){
+        if (HitBlackCount == HitBlackTarget) {
           StepIndex = 3;
         }
       }
-      
-      else if((GripLightData > GripLightDark) && (HitBlack)){
+
+      else if ((GripLightData > GripLightDark) && (HitBlack)) {
         HitBlack = false;
       }
-    break;
-    
+      break;
+
     case 3:
-      LeftMotorSpeed = 1500;
-      RightMotorSpeed = 1500;
+      LftMotorSpeed = 1500;
+      RgtMotorSpeed = 1500;
       ArmBend.write(0);
       ArmBase.write(0);
       Wrist.write(0);
       Grip.write(0);
       HitBlackCount = 0;
       HitBlackTarget--;
-    break;
+      break;
   }
 }
+
 //Mode 2
 void Check() {
+
   //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+
   // Robo --> back and forth scanning motion
-  LeftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
-  RightMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
+  LftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
+  RgtMotorSpeed = constrain(MotorSpeed + RightMotorOffset, 1500, 2200);
   int lastHallReading = analogRead(HallGrip);
   int LftEncoderCounter = LftEncdr.getRawPosition();
   int RgtEncoderCounter = RgtEncdr.getRawPosition();
 
-  LeftMotorSpeed = 1650;
-  LftMtr.writeMicroseconds(LeftMotorSpeed);
-  for (LftEncoderCounter; LftEncoderCounter < 50; LftEncoderCounter++) {
-    int currentHallReading = analogRead(HallGrip);
+  ArmBase.write(100); // 37 - 179 folded to out
+  ArmBend.write(110); // 0 -180 out to folded
+
+  LftMotorSpeed = 1650;
+  LftMtr.writeMicroseconds(LftMotorSpeed);
+  for (LftEncoderCounter; LftEncoderCounter < 40; LftEncoderCounter++) {
+    int currentHallReading = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
     Serial.print("Left Encoder Forward: ");
     Serial.println(LftEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
-  LeftMotorSpeed = 1350;
-  LftMtr.writeMicroseconds(LeftMotorSpeed);
+  LftMotorSpeed = 1350;
+  LftMtr.writeMicroseconds(LftMotorSpeed);
   for (LftEncoderCounter; LftEncoderCounter > 0; LftEncoderCounter--) {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Left Encoder Backward: ");
     Serial.println(LftEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
-  LeftMotorSpeed = 1500;
-  LftMtr.writeMicroseconds(LeftMotorSpeed);
+  LftMotorSpeed = 1500;
+  LftMtr.writeMicroseconds(LftMotorSpeed);
   delay(200);
 
-
-  RightMotorSpeed = 1650;
-  RgtMtr.writeMicroseconds(RightMotorSpeed);
-  for (RgtEncoderCounter; RgtEncoderCounter < 50; RgtEncoderCounter++) {
+  RgtMotorSpeed = 1650;
+  RgtMtr.writeMicroseconds(RgtMotorSpeed);
+  for (RgtEncoderCounter; RgtEncoderCounter < 40; RgtEncoderCounter++) {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Right Encoder Forward: ");
     Serial.println(RgtEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
-  RightMotorSpeed = 1350;
-  RgtMtr.writeMicroseconds(RightMotorSpeed);
+  RgtMotorSpeed = 1350;
+  RgtMtr.writeMicroseconds(RgtMotorSpeed);
   for (RgtEncoderCounter; RgtEncoderCounter > 0; RgtEncoderCounter--) {
     int currentHallReading = analogRead(HallGrip);
     Serial.print("Right Encoder Backward: ");
     Serial.println(RgtEncoderCounter);
-    if (currentHallReading - lastHallReading > 20) {
+    if (currentHallReading - lastHallReading > 15) {
       return;
     }
   }
-  RightMotorSpeed = 1500;
-  RgtMtr.writeMicroseconds(RightMotorSpeed);
+  RgtMotorSpeed = 1500;
+  RgtMtr.writeMicroseconds(RgtMotorSpeed);
   delay(200);
 }
 
 void Move() {
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+  bool WallDistance = false;
+  int GripCounter;
+  int DriveStraight = false;
+  int FirstValue;
+  int SecondValue;
+  int StraightCount = false;
+
+
+  while (WallDistance == false) { // approach wall
+    Ping(UltrasonicPing);
+    if (UltrasonicDistance > 21) {
+      RgtMotorSpeed = 1650;
+      LftMotorSpeed = 1650;
+      LftMtr.writeMicroseconds(LftMotorSpeed);
+      RgtMtr.writeMicroseconds(RgtMotorSpeed);
+    }
+    if (UltrasonicDistance < 17) {
+      LftMtr.writeMicroseconds(1500);
+      RgtMtr.writeMicroseconds(1500);
+      WallDistance = true;
+    }
+  }
+  // Robot picks up tesseract
+  Grip.write(90); // open grip
+  delay(300);
+  ArmBend.write(165); // extend arm
+  ArmBase.write(165);
+  delay(300);
+
+  while (analogRead(GripLight) < 950) { // 950 --> light, over 1000 --> dark
+    LftMotorSpeed = 1425;
+    LftMtr.writeMicroseconds(1425);
+  }
+  Grip.writeMicroseconds(150); // close grip
+
+  RgtMotorSpeed = 1350; // back
+  LftMotorSpeed = 1350;
+  LftMtr.writeMicroseconds(LftMotorSpeed);
+  RgtMtr.writeMicroseconds(RgtMotorSpeed);
+  delay(400);
+  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1500);
+
+  LftMotorSpeed = 1650; // turn right towards overhang
+  LftMtr.writeMicroseconds(LftMotorSpeed);
+  delay(200);
+  LftMtr.writeMicroseconds(1500);
+
+  while (DriveStraight == false) {
+    Ping(2);
+    if (StraightCount == false) {
+      FirstValue = UltrasonicDistance;
+    }
+    SecondValue = UltrasonicDistance;
+
+    if (SecondValue - FirstValue > 2) {
+      RgtMtr.writeMicroseconds(1650);
+      delay(50);
+    }
+    if (SecondValue - FirstValue > -2) {
+      LftMtr.writeMicroseconds(1650);
+      delay(50);
+    }
+    StraightCount = true;
+    FirstValue = SecondValue;
+  }
 }
 
 void InitMove(){
   accStps = 10;
+}
+
+void DropOff() {
+  ArmBend.writeMicroseconds(90); // extend arm uwards
+  ArmBase.writeMicroseconds(90);
+  Wrist.write(0); // 0 --> max upwards, 180 --> max downwards
+  delay(1000);
+
+  while (analogRead(2) > 950) { // over 1000 --> light, less than 500 -->dark
+    LftMtr.writeMicroseconds(1350);
+    RgtMtr.writeMicroseconds(1350);
+  }
+  Grip.writeMicroseconds(90); // open grip
 }
 
 void motorAccelerate(unsigned uSSpd){
@@ -532,7 +693,6 @@ void motorAccelerate(unsigned uSSpd){
   PIDSpeed(uSSpd);
 }
 void PIDSpeed(unsigned uSSpd){
-
   PIDLft = LftEncdr.getSpeed();
   PIDRgt = RgtEncdr.getSpeed();
   
