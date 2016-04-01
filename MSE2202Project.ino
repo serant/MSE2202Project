@@ -3,7 +3,7 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-#include <PID_v1.h>
+#include "PID_v1.h"
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
@@ -39,18 +39,6 @@ unsigned GripLightData = 0;
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 
-//PID Control
-double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
-double RightSpeed, RightPower, LeftSpeed;
-double Kp = 11.9, Ki =100, Kd = 0.00001;
-PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
-PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
-int k = 10;
-
-PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
-unsigned long prevTime = 0;
-unsigned long currentTime = 0;
-int i = 0;
 
 Servo LftMtr;
 Servo ArmBend;
@@ -102,6 +90,16 @@ unsigned int RightMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
+//PID Control
+double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
+double PIDRgt, PIDRgtPwr, PIDLft;
+double Kp = 11.9, Ki =100, Kd = 0.00001;
+int accStps = 10;
+
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
+unsigned long prevTime = 0;
+unsigned long currentTime = 0;
+int i = 0;
 
 // Tracking Variables
 const int CE = 637;//pulses per revolution
@@ -166,11 +164,9 @@ void setup() {
 
   HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
   
-  leftPid.SetMode(AUTOMATIC);
-  rightPid.SetMode(AUTOMATIC);
-  motorPID.SetMode(AUTOMATIC);
-  motorPID.SetOutputLimits(1570,1830);
-  motorPID.SetSampleTime(10);
+  mtrPID.SetMode(AUTOMATIC);
+  mtrPID.SetOutputLimits(1570,1830);
+  mtrPID.SetSampleTime(10);
 }
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
@@ -217,11 +213,11 @@ void DebuggerModule() {
   if((millis() - prevTime) >=12){
     prevTime = millis();
     Serial.print("Left Input: ");
-    Serial.println(LeftSpeed);
+    Serial.println(PIDLft);
     Serial.print("Current Right Speed: ");
-    Serial.println(RightSpeed);
+    Serial.println(PIDRgt);
     Serial.print("Current Right Power: ");
-    Serial.println(RightPower);
+    Serial.println(PIDRgtPwr);
   }
 #endif
 }
@@ -516,31 +512,33 @@ void Check() {
   RgtMtr.writeMicroseconds(RightMotorSpeed);
   delay(200);
 }
+
 void Move() {
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
 }
-void motorAccelerate(unsigned uSSpeed){
+
+void InitMove(){
+  accStps = 10;
+}
+
+void motorAccelerate(unsigned uSSpd){
   
-  for(k; k > 1; k--){
-    motorPID.SetSampleTime(10);
-    PIDSpeed(constrain((1500+((uSSpeed-1500)/k)), 1500, 2100));
-    Serial.println(constrain((1500+((uSSpeed-1500)/k)), 1500, 2100));
+  for(accStps; accStps > 1; accStps--){
+    mtrPID.SetSampleTime(10);
+    PIDSpeed(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+    Serial.println(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
   }
-  motorPID.SetSampleTime(10);
-  PIDSpeed(uSSpeed);
+  mtrPID.SetSampleTime(10);
+  PIDSpeed(uSSpd);
 }
-void PIDSpeed(unsigned uSSpeed){
+void PIDSpeed(unsigned uSSpd){
 
-  LeftSpeed = LftEncdr.getSpeed();
-  RightSpeed = RgtEncdr.getSpeed();
+  PIDLft = LftEncdr.getSpeed();
+  PIDRgt = RgtEncdr.getSpeed();
   
-  motorPID.Compute();
+  mtrPID.Compute();
   
-  LftMtr.writeMicroseconds(uSSpeed);
-  RgtMtr.writeMicroseconds(RightPower);
+  LftMtr.writeMicroseconds(uSSpd);
+  RgtMtr.writeMicroseconds(PIDRgtPwr);
 }
-
-
-//requires timer system and tesseracts picked up counter
-
 
