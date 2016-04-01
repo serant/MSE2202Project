@@ -164,85 +164,14 @@ void setup() {
   
 }
 void loop() {
-  //DebuggerModule();
-  //ArmBase.write (45);
-  //ArmBend.write (90);
+  Turn = 1; // Need to track turn number
   int timer1 = millis();
   Position();
   if (timer1 = 8000){
       GoHome();
       //Return();
-    
   };
- 
-  /*
-  switch(ModeIndex){
-    case 1:
-      Look();
-    break;
-    
-    case 2:
-      Countermeasures();
-    break;
-    
-    case 3:
-      PickUp();
-    break;
-    
-    case 4:
-      GoHome();
-    break;
-    
-    case 5:
-      Return();
-    break;
-    
-    case 6:
-      Check();
-    break;
-    
-    case 7:
-      Move();
-    break;
-  }
-*/
-  //Position();
-
-  //NONE OF THE BELOW SHOULD BE OUTSIDE OF THE SWITCH STATEMENT SO WE NEED TO ORGANIZE THIS 
-  //if(timer > 8000){
-  //GoHome();
-  //}
-
-  //Serial.println(timer);
- 
-  /*
-  Serial.print("Encoders L: ");
-  Serial.print(LftEncdr.getRawPosition());
-  Serial.print(", R: ");
-  Serial.println(RgtEncdr.getRawPosition());
-
-  
-  if (timer < 5000){
-
-    LftSpeed = 1800;
-    RgtSpeed = 1800;
-    //Serial.println("move");
-  } else {
-    LftSpeed = 1500;
-    RgtSpeed = 1500;
-  }
-  //Serial.print(lftspeed);
-
-  LftMtr.writeMicroseconds(LftSpeed);
-  RgtMtr.writeMicroseconds(RgtSpeed);
-
-  Look();
-  if (StartTracking) {
-
-    TrackPosition();
-  }*/
 }
-
 
 //functions
 
@@ -423,7 +352,6 @@ void PickUp() {
         delay(500);
         ArmBase.write(40);
         ArmBend.write(160);
-
       }
   }
 }
@@ -450,10 +378,11 @@ void Position(){
   dYPstn = DelDsp * sin((OrTheta*PI)/180);
   XPstn = XPstn + dXPstn;
   YPstn = YPstn + dYPstn;
-  //Serial.print("X: ");  //X coordinates of the robot (right is positive)
-  //Serial.print(XPstn); 
-  //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
-  PolTheta = 45; //atan(YPstn/XPstn);//The polar angle of the position of the robot
+  Serial.print("X: ");  //X coordinates of the robot (right is positive)
+  Serial.println(XPstn); 
+  Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
+  Serial.println(YPstn); 
+  PolTheta = atan(YPstn/XPstn);//The polar angle of the position of the robot
   Serial.print("Pol Theta: ");
   Serial.println(PolTheta);
   RawLftPrv = LftEncdr.getRawPosition();
@@ -463,7 +392,7 @@ void Position(){
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  Turn = 1;
+  
   Position();
   for (int i = 0; i>0; i++){
     SvdTheta = OrTheta;
@@ -473,14 +402,14 @@ void GoHome() {
   
   if (Turn % 2 == 0){ //Turn number is even 
    while (!(OrTheta < (PolTheta + 90) && OrTheta > (PolTheta + 80))){
-    Serial.println("Alinging Bot...");
+    Serial.println("Alinging Bot, even turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
     Position();
   }
   } else { // Turn number is odd
     while (!(OrTheta < ((360 - PolTheta) + 5) && OrTheta > ((360 - PolTheta) - 5))){
-    Serial.println("Alinging Bot...");
+    Serial.println("Alinging Bot, odd turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
     Position();
@@ -501,20 +430,8 @@ void GoHome() {
   } 
   LftMtr.write(1500);
   RgtMtr.write(1500);
-  /*
-  Ping(2);
-  SideDistance = UltrasonicDistance; 
-  while (SideDistance < 30){
-    Serial.println("Alinging Bot to wall... ");
-    LftMtr.write(1700);
-    RgtMtr.write(1500);
-    Ping(2);
-    SideDistance = UltrasonicDistance;
-  }
-  */
+ 
   ModeIndex = 0; //Next Function call after going home
-  
-  
 }
 
 
