@@ -673,7 +673,8 @@ void DropOff() {
     LftMtr.writeMicroseconds(1350);
     RgtMtr.writeMicroseconds(1350);
   }
-  Grip.writeMicroseconds(90); // open grip
+  Grip.writeMicroseconds(90); //
+  open grip
 }
 
 //PID FUNCTIONS
