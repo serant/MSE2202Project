@@ -41,12 +41,13 @@ unsigned long UltrasonicDistance = 0;
 //PID Control
 double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
 double RightSpeed, RightPower, LeftSpeed;
-double Kp = 0.30, Ki = 1, Kd = 1;
+double Kp = 52, Ki = 1.7, Kd = 0.005;
 PID leftPid(&leftInput, &leftOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID rightPid(&rightInput, &rightOutput, &targetSpeed, Kp, Ki, Kd, DIRECT);
 PID motorPID(&RightSpeed, &RightPower, &LeftSpeed, Kp, Ki, Kd, DIRECT);
 unsigned long prevTime = 0;
 unsigned long currentTime = 0;
+int i = 0;
 
 Servo LftMtr;
 Servo ArmBend;
@@ -165,16 +166,17 @@ void setup() {
   leftPid.SetMode(AUTOMATIC);
   rightPid.SetMode(AUTOMATIC);
   motorPID.SetMode(AUTOMATIC);
-  motorPID.SetOutputLimits(1600,1800);
+  motorPID.SetOutputLimits(1570,1830);
   motorPID.SetSampleTime(30);
 }
 void loop() {
-  ArmBase.write(37);
-  ArmBend.write(180);
 
   //DebuggerModule();
   //targetSpeed = 30; //rpm
-  
+  for(i; i<1; i++)
+  {
+    RgtMtr.writeMicroseconds(1700);
+  }
   LftMtr.writeMicroseconds(1700);
   LeftSpeed = LftEncdr.getSpeed();
   RightSpeed = RgtEncdr.getSpeed();
@@ -182,15 +184,16 @@ void loop() {
   motorPID.Compute();
   RgtMtr.writeMicroseconds(RightPower);
   
-  
-  
   //targetSpeed = LftEncdr.getSpeed();
-  Serial.print("Left Input: ");
-  Serial.println(LeftSpeed);
-  Serial.print("Current Right Speed: ");
-  Serial.println(RightSpeed);
-  Serial.print("Current Right Power: ");
-  Serial.println(RightPower);
+  if((millis() - prevTime) >=35){
+    prevTime = millis();
+    Serial.print("Left Input: ");
+    Serial.println(LeftSpeed);
+    Serial.print("Current Right Speed: ");
+    Serial.println(RightSpeed);
+    Serial.print("Current Right Power: ");
+    Serial.println(RightPower);
+  }
   
   /*switch(ModeIndex){
     case 1:
