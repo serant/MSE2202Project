@@ -16,6 +16,7 @@ bool EnableIncrement = true;
 bool TurnRight = true;
 int AnyUse;
 unsigned pickedUp;
+bool start = true;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
@@ -42,6 +43,7 @@ unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 unsigned int timer;
 unsigned long timerStart;
+
 
 Servo LftMtr;
 Servo ArmBend;    //out->folded 0 ->180
@@ -158,21 +160,6 @@ void setup() {
 
   Ping(UltrasonicPing);
   CourseWidth = UltrasonicDistance * 10;  // course length in cm
-
-  if (digitalRead(13)) {   //determines which mode we start on, hit reset to change mode
-    if (digitalRead(12)) {
-      ModeIndex = 2; // switch 3 and 1 on (down)
-      timerStart = millis();
-      delay(2000);
-    }
-    else {
-      ModeIndex = 1; // switch 3 off (up), 1 on (down)
-      timerStart = millis();
-      delay(2000);
-    }
-  }
-  else ModeIndex = 0; // switch 1 off(up), use to start which mode we want, select mode then turn switch 1 on when start
-
 }
 
 void loop() {
@@ -180,8 +167,18 @@ void loop() {
   DebuggerModule();
   timer = millis() / 1000; //time in seconds
 
-  if (timer >= 240) {  //4 min time limit 
+  if (timer >= 240) {  //4 min time limit
     GoHome(0);
+  }
+  if (start) {       //only runs this until mode started, 1 sec delay
+    if (digitalRead(13)) {   //switch 1 up = stay in 0, down = start mode 1 or 2
+      start = false;
+      timerStart = millis();
+      if (digitalRead(12)) ModeIndex = 2; // switch 3 and 1 on (down)
+      else  ModeIndex = 1; // switch 3 off (up), 1 on (down)
+      delay(1000);
+    }
+    else ModeIndex = 0; // switch 1 off(up), select mode then turn switch 1 on(down) when want to start
   }
 
   switch (ModeIndex) {
@@ -199,7 +196,6 @@ void loop() {
       break;
 
     case 1: /**********************************mode 1 base = look */ Serial.println("In mode 1");
-      ModeIndex = 0;
 
       if (XPos < (CourseWidth - 800)) {
         if (!((analogRead(HallLft) - NOFIELD > 5) || (analogRead(HallLft) - NOFIELD < -5) || (analogRead(HallRgt) - NOFIELD > 5) || (analogRead(HallLft) - NOFIELD < -5))) {
@@ -626,7 +622,7 @@ void PlaceTesseract() {
       break;
   }
   pickedUp++;
-  if(pickedUp = 3) ModeIndex = 0;
+  if (pickedUp = 3) ModeIndex = 0;
 }
 
 //Mode 2
@@ -784,7 +780,7 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   ArmBase.writeMicroseconds(37);
 
   for (int i = millis(); i - millis() < 2000; i = millis()) {
-  LftMtr.writeMicroseconds(1400);
+    LftMtr.writeMicroseconds(1400);
     RgtMtr.writeMicroseconds(1400);
   }
   LftMtr.writeMicroseconds (1500);
