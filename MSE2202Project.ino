@@ -3,7 +3,7 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-
+#include "PID_v1.h"
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
@@ -12,6 +12,7 @@ unsigned long XPos = 0;
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
+//#define DEBUG_PID
 
 //Flags/Switches
 bool StartLooking = true;
@@ -29,8 +30,8 @@ unsigned int HallIdle;
 //Mechanical Information
 unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
-unsigned LftSpeed = 1600;
-unsigned RgtSpeed = 1600;
+unsigned LftSpeed = 0;
+unsigned RgtSpeed = 0;
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
@@ -43,6 +44,7 @@ int HitBlackTarget = 3;
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
+
 
 Servo LftMtr;
 Servo ArmBend;
@@ -66,19 +68,24 @@ unsigned int ModeIndicator[6] = {
   0xFFFF
 };
 
-//pins
+//pins FINALIZED DO NOT CHANGE THIS///////////////////
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
-const int ArmBasePin = 6;
-const int ArmBendPin = 7;
-const int WristPin = 11;//********
-const int GripPin = 10;//********
-const int HallRgt = A5;
-const int HallLft = A4;
-const int HallGrip = A0;//********
+const int ArmBasePin = 26;
+const int ArmBendPin = 27;
+const int WristPin = 10;//********
+const int GripPin = 11;//********
+const int HallRgt = A0;
+const int HallLft = A1;
+
 const int GripLight = A2;
+const int HallGrip = A3;//************
+const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
+const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
 const int UltrasonicPing = 2;//data return in 3
+//ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
+//ULTRASONIC SIDE DATA RETURN ON D9
 
 int MovFst = 2200;
 int Stop = 1600;
@@ -92,6 +99,16 @@ unsigned int RgtMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
+//PID Control
+double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
+double PIDRgt, PIDRgtPwr, PIDLft;
+double Kp = 11.9, Ki =100, Kd = 0.00001;
+int accStps = 10;
+
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
+unsigned long prevTime = 0;
+unsigned long currentTime = 0;
+int i = 0;
 
 // Tracking Variables
 long RawLftPrv = 0;
@@ -147,6 +164,7 @@ void setup() {
 
   pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin);
+  
   pinMode(7, INPUT);
 
   pinMode(GripLight, INPUT);
@@ -157,8 +175,15 @@ void setup() {
   pinMode (UltrasonicPingSide, OUTPUT);
   pinMode(UltrasonicPingSide + 1, INPUT);
 
+  HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
+  
+  mtrPID.SetMode(AUTOMATIC);
+  mtrPID.SetOutputLimits(1570,1830);
+  mtrPID.SetSampleTime(10);
+
 }
 void loop() {
+  //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
   Position();
 
@@ -202,6 +227,18 @@ void DebuggerModule() {
   Serial.print(", R: ");
   Serial.println(RgtMotorPos);
 
+#endif
+
+#ifdef DEBUG_PID
+  if((millis() - prevTime) >=12){
+    prevTime = millis();
+    Serial.print("Left Input: ");
+    Serial.println(PIDLft);
+    Serial.print("Current Right Speed: ");
+    Serial.println(PIDRgt);
+    Serial.print("Current Right Power: ");
+    Serial.println(PIDRgtPwr);
+  }
 #endif
 }
 
@@ -628,6 +665,9 @@ void Move() {
   }
 }
 
+void InitMove(){
+  accStps = 10;
+}
 
 void DropOff() {
   ArmBend.writeMicroseconds(90); // extend arm uwards
@@ -642,7 +682,23 @@ void DropOff() {
   Grip.writeMicroseconds(90); // open grip
 }
 
-
-//requires timer system and tesseracts picked up counter
-
+void motorAccelerate(unsigned uSSpd){
+  
+  for(accStps; accStps > 1; accStps--){
+    mtrPID.SetSampleTime(10);
+    PIDSpeed(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+    Serial.println(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+  }
+  mtrPID.SetSampleTime(10);
+  PIDSpeed(uSSpd);
+}
+void PIDSpeed(unsigned uSSpd){
+  PIDLft = LftEncdr.getSpeed();
+  PIDRgt = RgtEncdr.getSpeed();
+  
+  mtrPID.Compute();
+  
+  LftMtr.writeMicroseconds(uSSpd);
+  RgtMtr.writeMicroseconds(PIDRgtPwr);
+}
 
