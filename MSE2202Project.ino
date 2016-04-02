@@ -178,7 +178,6 @@ void setup() {
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
-  Position();
   WriteForwardSpeed(1700);
 
 
@@ -678,10 +677,11 @@ void DropOff() {
 //servoObject -> either LftMtr or RgtMtr
 void WriteForwardSpeed(unsigned pwmSpd){
   //If the robot hasn't reached the desired speed, keep accelerating
-  if(LftMtr.read() != pwmSpd){//stops when desired speed is written to LftMtr
+  if(LftMtr.readMicroseconds() != pwmSpd){//stops when desired speed is written to LftMtr
     MotorAccelerate(pwmSpd);
   }
   else{
+    Serial.println("begin coasting");
     PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
   }
 }
@@ -693,6 +693,7 @@ void MotorAccelerate(unsigned uSSpd){
   }
   mtrPID.SetSampleTime(10);//sets sampling time for PID control 
   PIDSpeed(uSSpd);//sets first datapoint for target speed
+  Serial.println("Finished accelerating");
 }
 void PIDSpeed(unsigned uSSpd){//used to ensure robot travels straight during constant velocity
   PIDLft = LftEncdr.getSpeed();//set point
