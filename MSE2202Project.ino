@@ -155,8 +155,6 @@ void setup() {
   ArmBend.attach(ArmBendPin);
   ArmBend.write(150);
 
-  pinMode(7, INPUT);
-
   pinMode(GripLight, INPUT);
 
   //ultrasonic setup
@@ -193,16 +191,13 @@ void loop() {
 
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ Serial.println("In Mode 0");
-      LftMtr.write(1500);
-      RgtMtr.write(1500);
-
-      RgtMtr.writeMicroseconds(Stop);
-      LftMtr.write(LftMtr.read() + 60);
-      delay(500);
-      LftMtr.write(Stop);
-      Serial.println("out");
-      delay(5000);
-
+    /*  for(int i = 0; i < 180; i++){
+        Wrist.write(i);
+      }
+      for(int j = 180; j < 0; j++){
+        Wrist.write(j);
+      } */
+      Move();
       break;
 
     case 1: /**********************************mode 1 base = look */ Serial.println("In mode 1");
@@ -257,11 +252,16 @@ void loop() {
         lftEncoderCounter = LftEncdr.getRawPosition();
         rgtEncoderCounter = RgtEncdr.getRawPosition();
 
-        ArmBase.write(100); // 37 - 179 folded to out
+        ArmBase.write(90); // 37 - 179 folded to out
         ArmBend.write(110); // 0 -180 out to folded
+        Grip.write(180);
+        Wrist.write(60);
 
-        LftMtr.writeMicroseconds(1650);
-        for (lftEncoderCounter; lftEncoderCounter < 40; lftEncoderCounter++) {
+        for (lftEncoderCounter; lftEncoderCounter < 10; lftEncoderCounter++) {
+          LftMtr.writeMicroseconds(1625);
+          delay(100);
+          LftMtr.writeMicroseconds(1500);
+          delay(100);
           currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
           Serial.print("Left Encoder Forward: ");
           Serial.println(lftEncoderCounter);
@@ -269,8 +269,13 @@ void loop() {
             Move();
           }
         }
-        LftMtr.writeMicroseconds(1500);
+        delay(300);
+
         for (lftEncoderCounter; lftEncoderCounter > 0; lftEncoderCounter--) {
+          LftMtr.writeMicroseconds(1375);
+          delay(100);
+          LftMtr.writeMicroseconds(1500);
+          delay(100);
           currentHallRead = analogRead(HallGrip);
           Serial.print("Left Encoder Backward: ");
           Serial.println(lftEncoderCounter);
@@ -278,11 +283,14 @@ void loop() {
             Move();
           }
         }
-        LftMtr.writeMicroseconds(1500);
-        delay(200);
+        delay(300);
 
-        RgtMtr.writeMicroseconds(1650);
-        for (rgtEncoderCounter; rgtEncoderCounter < 40; rgtEncoderCounter++) {
+        RgtMtr.writeMicroseconds(1625);
+        for (rgtEncoderCounter; rgtEncoderCounter < 10; rgtEncoderCounter++) {
+          RgtMtr.writeMicroseconds(1640);
+          delay(100);
+          RgtMtr.writeMicroseconds(1500);
+          delay(100);
           currentHallRead = analogRead(HallGrip);
           Serial.print("Right Encoder Forward: ");
           Serial.println(rgtEncoderCounter);
@@ -290,8 +298,13 @@ void loop() {
             Move();
           }
         }
-        RgtMtr.writeMicroseconds(1500);
+        delay(300);
+
         for (rgtEncoderCounter; rgtEncoderCounter > 0; rgtEncoderCounter--) {
+          RgtMtr.writeMicroseconds(1375);
+          delay(100);
+          RgtMtr.writeMicroseconds(1500);
+          delay(100);
           currentHallRead = analogRead(HallGrip);
           Serial.print("Right Encoder Backward: ");
           Serial.println(rgtEncoderCounter);
@@ -299,33 +312,34 @@ void loop() {
             Move();
           }
         }
-        RgtMtr.writeMicroseconds(1500);
-        delay(200);
+        delay(300);
+
+        LftEncdr.zero();
+        RgtEncdr.zero();
+
+        break;
+
+      case 3:
+
+        break;
+
+      case 4:
+
+        break;
+
+      case 5:
+
+        break;
+      case 6:
+
+        break;
+      case 7:
+
+        break;
+        //etc. add as needed
       }
-
-      break;
-
-    case 3:
-
-      break;
-
-    case 4:
-
-      break;
-
-    case 5:
-
-      break;
-    case 6:
-
-      break;
-    case 7:
-
-      break;
-      //etc. add as needed
   }
 }
-
 void DebuggerModule() {
   //Debugger module -> all debugger code can go here
 
@@ -468,23 +482,22 @@ void PickUp() {
           else AnyUse = -100;
           LftMtr.write(Stop + AnyUse);
           RgtMtr.write(Stop - AnyUse);
-          break;
-
-          UltrasonicDistance = 0;
-          LftMtr.write(1600);
-          RgtMtr.write(1600);
-
-          Grip.write(90);  //open grip
-          Wrist.write(100);
-          ArmBase.write(110);      // 37 folded, 180 out
-          ArmBend.write(150);    //180 folded, 0 out
-          delay(500);
-          Grip.write(150);   //close grip
-          delay(500);
-          ArmBase.write(40);
-          ArmBend.write(160);
-          Wrist.write(100);
         }
+        UltrasonicDistance = 0;
+        LftMtr.write(1600);
+        RgtMtr.write(1600);
+
+        Grip.write(90);  //open grip
+        Wrist.write(100);
+        ArmBase.write(110);      // 37 folded, 180 out
+        ArmBend.write(150);    //180 folded, 0 out
+        delay(500);
+        Grip.write(150);   //close grip
+        delay(500);
+        ArmBase.write(40);
+        ArmBend.write(160);
+        Wrist.write(100);
+        break;
     }
   }
   return;//good tesseract
@@ -716,73 +729,70 @@ void PlaceTesseract() {
 //put check in main switch statement,
 
 void Move() {//detected tesseract on wall, pick it up, turn, move under beam, then run DropOff
-  //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+  //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check
 
+  Serial.print("Picked up the tesseract! \n");
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
-
-  while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {
-    Ping(UltrasonicPing);
-    LftMtr.writeMicroseconds(1650);
-    RgtMtr.writeMicroseconds(1650);
-  }
-  LftMtr.writeMicroseconds(1500);
-  RgtMtr.writeMicroseconds(1500);
+  delay(2000);
 
   Grip.write(90); // open grip
-  ArmBend.write(165); // extend arm, grip above tesseract
-  ArmBase.write(165);
-  Wrist.write(170);
+  ArmBend.write(120); // extend arm, grip above tesseract
   delay(300);
+  Grip.write(180); // close grip
+  delay(1000);
 
-  while (analogRead(GripLight) < 950) { // 950 --> light, over 1000 --> dark
-    LftMtr.writeMicroseconds(1425);
+  ArmBend.write(180);
+  ArmBase.write(40);
+
+  /*  RgtMtr.writeMicroseconds(1650);// turn right towards overhang
+    LftMtr.writeMicroseconds(1350);
+    delay(200);
+    RgtMtr.writeMicroseconds(1500);
+    LftMtr.writeMicroseconds(1500);
+    delay(300);
+     for (int i = 1; i <= 19; i++) { //want 18 cm from wall
+       Ping(UltrasonicPingSide);
+       UltrasonicDistance = UltrasonicDistance;
+       AnyUse = 18 - UltrasonicDistance;
+       RgtMtr.writeMicroseconds(1400 + AnyUse);
+       LftMtr.writeMicroseconds(1400 - AnyUse);
+       delay(25);
+       AnyUse = -AnyUse;
+       RgtMtr.writeMicroseconds(1400 + AnyUse);
+       LftMtr.writeMicroseconds(1400 - AnyUse);
+       delay(25);
+      }
+      for (int i = 1; i <= 50; i++) { //want 18 cm from wall
+       Ping(UltrasonicPingSide);
+       if ((!(UltrasonicDistance < 210)) || (UltrasonicDistance = 0)) UltrasonicDistance = 180;
+       UltrasonicDistance = UltrasonicDistance / 10;
+       AnyUse = UltrasonicDistance - 18;
+       RgtMtr.writeMicroseconds(1600 + AnyUse);
+       LftMtr.writeMicroseconds(1600 - AnyUse);
+       delay(25);
+       AnyUse = -AnyUse;
+       RgtMtr.writeMicroseconds(1600 + AnyUse);
+       LftMtr.writeMicroseconds(1600 - AnyUse);
+       delay(25);
+      }
+      LftMtr.writeMicroseconds(1500);
+      RgtMtr.writeMicroseconds(1500); */
+
+  AnyUse = (LftEncdr.getRawPosition() + 480);
+  while (LftEncdr.getRawPosition() < AnyUse) {
+    LftMtr.writeMicroseconds(1650);
   }
   LftMtr.writeMicroseconds(1500);
+  delay(1000);
 
-  ArmBase.write(175);//lower claw around tesseract
-  ArmBend.write(175);
-  Wrist.write(180);
-  Grip.writeMicroseconds(150); // close grip
-
-  LftMtr.writeMicroseconds(1350);
-  RgtMtr.writeMicroseconds(1350);
-  delay(400);
-  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1650);
+  LftMtr.writeMicroseconds(1650);
+  delay(3000);
   RgtMtr.writeMicroseconds(1500);
-
-  RgtMtr.writeMicroseconds(1650);// turn right towards overhang
-  LftMtr.writeMicroseconds(1350);
-  delay(200);
-  RgtMtr.writeMicroseconds(1500);
   LftMtr.writeMicroseconds(1500);
-
-  for (int i = 1; i <= 19; i++) { //want 18 cm from wall
-    Ping(UltrasonicPingSide);
-    UltrasonicDistance = UltrasonicDistance / 10;
-    AnyUse = 18 - UltrasonicDistance;
-    RgtMtr.writeMicroseconds(1400 + AnyUse);
-    LftMtr.writeMicroseconds(1400 - AnyUse);
-    delay(25);
-    AnyUse = -AnyUse;
-    RgtMtr.writeMicroseconds(1400 + AnyUse);
-    LftMtr.writeMicroseconds(1400 - AnyUse);
-    delay(25);
-  }
-  for (int i = 1; i <= 50; i++) { //want 18 cm from wall
-    Ping(UltrasonicPingSide);
-    if ((!(UltrasonicDistance < 210)) || (UltrasonicDistance = 0)) UltrasonicDistance = 180;
-    UltrasonicDistance = UltrasonicDistance / 10;
-    AnyUse = UltrasonicDistance - 18;
-    RgtMtr.writeMicroseconds(1600 + AnyUse);
-    LftMtr.writeMicroseconds(1600 - AnyUse);
-    delay(25);
-    AnyUse = -AnyUse;
-    RgtMtr.writeMicroseconds(1600 + AnyUse);
-    LftMtr.writeMicroseconds(1600 - AnyUse);
-    delay(25);
-  }
-  DropOff();
+  delay(2000);
+//  DropOff();
 }
 
 void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
@@ -803,9 +813,9 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   ArmBend.writeMicroseconds(180); //fold up arm
   ArmBase.writeMicroseconds(37);
 
-  for (int i = millis(); i - millis() < 2000; i = millis()) {
-    LftMtr.writeMicroseconds(1400);
-    RgtMtr.writeMicroseconds(1400);
+  for (int i = millis(); millis() - i < 2000;) {
+    LftMtr.writeMicroseconds(1350);
+    RgtMtr.writeMicroseconds(1350);
   }
   LftMtr.writeMicroseconds (1500);
   RgtMtr.writeMicroseconds(1500);
