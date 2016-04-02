@@ -199,10 +199,15 @@ void loop() {
       RgtMtr.writeMicroseconds(Stop);
       LftMtr.writeMicroseconds(Stop);
       delay(100);
-      LftMtr.write(LftMtr.read() + 60);
-      delay(500);
-      Serial.println("out");
-      delay(5000);
+        AnyUse = (LftEncdr.getRawPosition() +  (627.2 / 2));
+        Serial.println(AnyUse);
+        while ((LftEncdr.getRawPosition() < AnyUse)) {
+          LftMtr.write(1600);
+          Serial.println(LftEncdr.getRawPosition());
+        }
+      }
+      LftMtr.write(1500);
+      delay(3000);
 
       break;
 
