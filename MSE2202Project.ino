@@ -18,7 +18,6 @@ unsigned long XPos = 0;
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
-
 bool TurnRight = true;
 
 //Hall Sensor Stuff
@@ -73,11 +72,10 @@ const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 26;
 const int ArmBendPin = 27;
-const int WristPin = 10;//********
-const int GripPin = 11;//********
+const int GripPin = 10;//********
+const int WristPin = 11;//********
 const int HallRgt = A0;
 const int HallLft = A1;
-
 const int GripLight = A2;
 const int HallGrip = A3;//************
 const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
@@ -100,14 +98,10 @@ unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
 //PID Control
-double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
-double PIDRgt, PIDRgtPwr, PIDLft;
-double Kp = 11.9, Ki =100, Kd = 0.00001;
-unsigned accSpd = 0;
-PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
-unsigned long prevTime = 0;
-unsigned long currentTime = 0;
-int i = 0;
+double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
+double Kp = 11.9, Ki =100, Kd = 0.00001;//PID parameters
+unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
 
 // Tracking Variables
 long RawLftPrv = 0;
@@ -185,13 +179,14 @@ void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
   Position();
+  WriteForwardSpeed(1700);
 
 
-  Look();
+  /*Look();
   if (StartTracking) {
 
     TrackPosition();
-  }
+  }*/
 }
 
 //functions
@@ -673,8 +668,7 @@ void DropOff() {
     LftMtr.writeMicroseconds(1350);
     RgtMtr.writeMicroseconds(1350);
   }
-  Grip.writeMicroseconds(90); //
-  open grip
+  Grip.writeMicroseconds(90); //  open grip
 }
 
 //PID FUNCTIONS
