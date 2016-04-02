@@ -93,8 +93,6 @@ unsigned long RightMotorOffset;
 
 // Tracking Variables
 int Turn = 0;
-long RawLftPrv = 0;
-long RawRgtPrv = 0;
 const double CE = 627.2;//pulses per revolution 
 const double CF= ((PI*69.85)/CE); //Conversion factor, traslates encoder pulses to linear displacement
 double DelLft = 0;
@@ -102,22 +100,16 @@ double DelRgt = 0;
 double DelDsp = 0; 
 long TotalDsp = 0;
 double SvdDsp = 0;
-double Dsp = 1500;
+double Dsp = 0;
 double OrTheta = 0;
-double PrvOrTheta = 0;
-double dTheta = 0;
-double PolTheta = 105;
+double PolTheta = 0;
 double FindTheta = 0;
 double PickUpTheta = 0;
 double XPstn = 1;
 double YPstn = 0;
-double SideDistance = 0;
 double SvdDelDisp = 0;
-double SvdTheta = 0;
 
-double ThetaBuffer = 2;
-double DspBuffer = 10;
-int StepIndex = 1;
+int StepIndex;
 
 void setup() {
   Serial.begin(9600);
@@ -365,32 +357,29 @@ void Position(){
   // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
   
   // Distance travelled 
-  DelRgt = (CF * ((RgtEncdr.getRawPosition()) /*- RawRgtPrv*/)); // Instantaneous Distance traveled by right Wheel 
-  DelLft = (CF * ((LftEncdr.getRawPosition())/*- RawLftPrv*/)); // Instantaneous Distnace traveled by left wheel 
-  DelDsp = (DelRgt + DelLft)/2; //Instantaneous Distance traveled by the centerpoint of the robot
+  DelRgt = (CF * ((RgtEncdr.getRawPosition()))); // Instantaneous Distance traveled by right Wheel 
+  DelLft = (CF * ((LftEncdr.getRawPosition()))); // Instantaneous Distnace traveled by left wheel 
+  DelDsp = (DelRgt + DelLft)/2; //Distance traveled by the centerpoint of the robot, affected by quadrent
   Dsp = Dsp + DelDsp; //Current Displacement 
+  TotalDsp = (abs(DelRgt) + abs(DelLft))/2; //Total distance travelled 
   //Serial.print("Displacement: ");
   //Serial.println(Dsp);
   
   OrTheta = ((DelRgt - DelLft)/115.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
   OrTheta = (int)OrTheta%360; //If the magnitude of the orientation is greater than 360
 
-  Serial.print("Orientation Theta: ");
-  Serial.println(OrTheta); // Theta from wherever the bot was first placed 
+  //Serial.print("Orientation Theta: ");
+  //Serial.println(OrTheta); // Theta from wherever the bot was first placed 
   
   XPstn = DelDsp * cos((OrTheta*PI)/180);
   YPstn = DelDsp * sin((OrTheta*PI)/180);
-  Serial.print("X: ");  //X coordinates of the robot (right is positive)
-  Serial.println(XPstn); 
-  Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
-  Serial.println(YPstn); 
+  //Serial.print("X: ");  //X coordinates of the robot (right is positive)
+  //Serial.println(XPstn); 
+  //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
+  //Serial.println(YPstn); 
   PolTheta = (atan(YPstn/XPstn) * (180/PI));//The polar angle of the position of the robot
-  Serial.print("Pol Theta: ");
-  Serial.println(PolTheta);
-  
-  RawLftPrv = LftEncdr.getRawPosition();
-  RawRgtPrv = RgtEncdr.getRawPosition();
-  PrvOrTheta = OrTheta;
+  //Serial.print("Pol Theta: ");
+  //Serial.println(PolTheta);
 }
 
 void GoHome() {
@@ -399,7 +388,7 @@ void GoHome() {
   Position();
   for (int i = 0; i>0; i++){
     SvdDsp = Dsp; 
-    SvdTheta = PolTheta;
+    PickUpTheta = PolTheta;
   }
   
   if (Turn % 2 == 0){ //Turn number is even 
@@ -456,7 +445,7 @@ void Return() {
                     
   */
   Position();
-  while (!(OrTheta < (SvdTheta + 5) && OrTheta > (SvdTheta - 5))) {
+  while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) {
     Serial.println("Alinging Bot with saved polar theta...");
     LftMtr.write(1650);
     RgtMtr.write(1350);
