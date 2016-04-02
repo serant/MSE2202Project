@@ -110,12 +110,10 @@ double PolTheta = 105;
 double FindTheta = 0;
 double PickUpTheta = 0;
 double XPstn = 1;
-double dXPstn = 0;
 double YPstn = 0;
-double dYPstn = 0;
-double SvdTheta = 0;
 double SideDistance = 0;
 double SvdDelDisp = 0;
+double SvdTheta = 0;
 
 double ThetaBuffer = 2;
 double DspBuffer = 10;
@@ -164,7 +162,7 @@ void setup() {
   
 }
 void loop() {
-  Turn = 2; // Need to track turn number
+  Turn = 1; // Need to track turn number
   int timer1 = millis();
   Position();
   //Serial.print("Left: ");
@@ -173,9 +171,9 @@ void loop() {
   //Serial.println(RgtEncdr.getRawPosition());
   
   //while (timer1 < 8000){
-      Position();
+      //Position();
       //GoHome();
-      //Return();
+      Return();
       //break;
   //};
 }
@@ -375,7 +373,6 @@ void Position(){
   //Serial.println(Dsp);
   
   OrTheta = ((DelRgt - DelLft)/115.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
-  //OrTheta = OrTheta + dTheta; //Orientation of robot
   OrTheta = (int)OrTheta%360; //If the magnitude of the orientation is greater than 360
 
   Serial.print("Orientation Theta: ");
@@ -390,6 +387,7 @@ void Position(){
   PolTheta = (atan(YPstn/XPstn) * (180/PI));//The polar angle of the position of the robot
   Serial.print("Pol Theta: ");
   Serial.println(PolTheta);
+  
   RawLftPrv = LftEncdr.getRawPosition();
   RawRgtPrv = RgtEncdr.getRawPosition();
   PrvOrTheta = OrTheta;
@@ -400,23 +398,22 @@ void GoHome() {
   
   Position();
   for (int i = 0; i>0; i++){
-    SvdTheta = OrTheta;
     SvdDsp = Dsp; 
-    
+    SvdTheta = PolTheta;
   }
   
   if (Turn % 2 == 0){ //Turn number is even 
-   while (!(OrTheta < (PolTheta + 95) && OrTheta > (PolTheta + 85))){
+   while (!(OrTheta < (PolTheta + 185) && OrTheta > (PolTheta + 175))){
     Serial.println("Alinging Bot, even turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
     Position();
   }
   } else { // Turn number is odd
-    while (!(OrTheta < ((360 - PolTheta) + 5) && OrTheta > ((360 - PolTheta) - 5))){
+    while (!(OrTheta < (PolTheta +5) && OrTheta > (PolTheta - 5))){//Test
     Serial.println("Alinging Bot, odd turn...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
+    LftMtr.write(1650);
+    RgtMtr.write(1350);
     Position();
     } 
   }
@@ -435,8 +432,6 @@ void GoHome() {
   } 
   LftMtr.write(1500);
   RgtMtr.write(1500);
- 
-  ModeIndex = 0; //Next Function call after going home
 }
 
 
@@ -461,52 +456,43 @@ void Return() {
                     
   */
   Position();
-  
-  while (!(OrTheta < (PolTheta + 265) && OrTheta > (PolTheta + 275)) ){
-    Serial.println("Alinging Bot with polar theta...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
+  while (!(OrTheta < (SvdTheta + 5) && OrTheta > (SvdTheta - 5))) {
+    Serial.println("Alinging Bot with saved polar theta...");
+    LftMtr.write(1650);
+    RgtMtr.write(1350);
     Position();
   }
+  
   LftMtr.write(1500);
   RgtMtr.write(1500);
   
   SvdDelDisp = ((DelRgt + DelLft)/2) + sqrt((XPstn*XPstn) + (YPstn*YPstn));
   while (((abs(DelRgt) + abs(DelLft))/2) < SvdDelDisp){ //Check 
-    Serial.println("Moving towards starting position... ");
+    Serial.println("Moving towards pickup position... ");
     LftMtr.write (1700);
     RgtMtr.write (1700);
     Position();
   }
+  
   LftMtr.write(1500);
   RgtMtr.write(1500);
 
-  while(!(OrTheta < (SvdTheta + 5) && OrTheta > (SvdTheta - 5)) || !(OrTheta < (SvdTheta- 360) + 5) && OrTheta > ((SvdTheta - 360) - 5)){
-    Serial.println("Alinging Bot with orientation theta...");
+  if (Turn % 2 == 0){ //Turn number is even 
+   while (!(OrTheta < 5 && OrTheta > -5)){
+    Serial.println("Alinging Bot with 0 degrees, even turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
     Position();
   }
-
   
-  /*
-  if(((OrTheta < (FindTheta - ThetaBuffer)) || OrTheta > (FindTheta + ThetaBuffer)) && ((Dsp < (SvdDsp - DspBuffer)) || Dsp > (SvdDsp + DspBuffer)))
-  {
-    LftMotorSpeed = 1400;
-    RgtMotorSpeed = 1600;
+  } else { // Turn number is odd
+    while (!(OrTheta < 185 && OrTheta > 175)){
+    Serial.println("Alinging Bot with 180 degrees, odd turn...");
+    LftMtr.write(1350);
+    RgtMtr.write(1650);
+    Position();
+    } 
   }
-  
-  else if(((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp < (SvdDsp - DspBuffer)) || Dsp > (SvdDsp + DspBuffer)))
-  {
-    LftMotorSpeed = MotorSpeed + LeftMotorOffset;
-    RgtMotorSpeed = MotorSpeed + RightMotorOffset;
-  }
-  
-  else if(((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp > (SvdDsp - DspBuffer)) || Dsp < (SvdDsp + DspBuffer)))
-  {
-    //switch control signal to go back to Look();
-  }
-  */
 }
 
 void PlaceTesseract(){
