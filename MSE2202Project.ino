@@ -95,7 +95,7 @@ unsigned long RightMotorOffset;
 int Turn = 0;
 long RawLftPrv = 0;
 long RawRgtPrv = 0;
-const double CE = 637;//pulses per revolution 
+const double CE = 627.2;//pulses per revolution 
 const double CF= ((PI*69.85)/CE); //Conversion factor, traslates encoder pulses to linear displacement
 double DelLft = 0;
 double DelRgt = 0;
@@ -109,7 +109,7 @@ double dTheta = 0;
 double PolTheta = 105;
 double FindTheta = 0;
 double PickUpTheta = 0;
-double XPstn = 00.0000000001;
+double XPstn = 1;
 double dXPstn = 0;
 double YPstn = 0;
 double dYPstn = 0;
@@ -164,13 +164,20 @@ void setup() {
   
 }
 void loop() {
-  Turn = 1; // Need to track turn number
+  Turn = 2; // Need to track turn number
   int timer1 = millis();
   Position();
-  if (timer1 = 8000){
-      GoHome();
+  //Serial.print("Left: ");
+  //Serial.println(LftEncdr.getRawPosition());
+  //Serial.print("Right: ");
+  //Serial.println(RgtEncdr.getRawPosition());
+  
+  //while (timer1 < 8000){
+      Position();
+      //GoHome();
       //Return();
-  };
+      //break;
+  //};
 }
 
 //functions
@@ -367,22 +374,20 @@ void Position(){
   //Serial.print("Displacement: ");
   //Serial.println(Dsp);
   
-  OrTheta = ((DelRgt - DelLft)/110.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
+  OrTheta = ((DelRgt - DelLft)/115.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
   //OrTheta = OrTheta + dTheta; //Orientation of robot
   OrTheta = (int)OrTheta%360; //If the magnitude of the orientation is greater than 360
 
   Serial.print("Orientation Theta: ");
   Serial.println(OrTheta); // Theta from wherever the bot was first placed 
   
-  dXPstn = DelDsp * cos((OrTheta*PI)/180);
-  dYPstn = DelDsp * sin((OrTheta*PI)/180);
-  XPstn = XPstn + dXPstn;
-  YPstn = YPstn + dYPstn;
+  XPstn = DelDsp * cos((OrTheta*PI)/180);
+  YPstn = DelDsp * sin((OrTheta*PI)/180);
   Serial.print("X: ");  //X coordinates of the robot (right is positive)
   Serial.println(XPstn); 
   Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
   Serial.println(YPstn); 
-  PolTheta = atan(YPstn/XPstn);//The polar angle of the position of the robot
+  PolTheta = (atan(YPstn/XPstn) * (180/PI));//The polar angle of the position of the robot
   Serial.print("Pol Theta: ");
   Serial.println(PolTheta);
   RawLftPrv = LftEncdr.getRawPosition();
@@ -401,7 +406,7 @@ void GoHome() {
   }
   
   if (Turn % 2 == 0){ //Turn number is even 
-   while (!(OrTheta < (PolTheta + 90) && OrTheta > (PolTheta + 80))){
+   while (!(OrTheta < (PolTheta + 95) && OrTheta > (PolTheta + 85))){
     Serial.println("Alinging Bot, even turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
@@ -421,7 +426,7 @@ void GoHome() {
   delay(500);
   
   Ping(2); 
-  while (UltrasonicDistance > 17){
+  while (UltrasonicDistance > 10){
      Serial.println("Moving towards origin...");
      LftMtr.write(1700);
      RgtMtr.write(1700);
@@ -466,8 +471,8 @@ void Return() {
   LftMtr.write(1500);
   RgtMtr.write(1500);
   
-  SvdDelDisp = Dsp + sqrt((XPstn*XPstn) + (YPstn*YPstn));
-  while (Dsp < SvdDelDisp){
+  SvdDelDisp = ((DelRgt + DelLft)/2) + sqrt((XPstn*XPstn) + (YPstn*YPstn));
+  while (((abs(DelRgt) + abs(DelLft))/2) < SvdDelDisp){ //Check 
     Serial.println("Moving towards starting position... ");
     LftMtr.write (1700);
     RgtMtr.write (1700);
