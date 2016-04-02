@@ -99,15 +99,10 @@ unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 
 //PID Control
-double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
-double PIDRgt, PIDRgtPwr, PIDLft;
-double Kp = 11.9, Ki =100, Kd = 0.00001;
-int accStps = 10;
-
-PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
-unsigned long prevTime = 0;
-unsigned long currentTime = 0;
-int i = 0;
+double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
+double Kp = 11.9, Ki =100, Kd = 0.00001;//PID parameters
+unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
 
 // Tracking Variables
 long RawLftPrv = 0;
@@ -182,14 +177,14 @@ void setup() {
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
-  Position();
+  WriteForwardSpeed(1700);
 
 
-  Look();
+  /*Look();
   if (StartTracking) {
 
     TrackPosition();
-  }
+  }*/
 }
 
 //functions
@@ -305,8 +300,7 @@ void Look() {
 
       if (XPos < (CourseWidth - 600)) {
         if ((((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) || ((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) {
-          RgtMtr.writeMicroseconds(ForwardSpeed);
-          LftMtr.writeMicroseconds(ForwardSpeed);
+          WriteForwardSpeed(1700);
         }
         else
           PickUp();
@@ -348,21 +342,17 @@ void PickUp() {
       RgtMtr.write(1450); ///this should align robot a bit to left  *******test #s
       LftMtr.write(1400);
       delay(500);
-      LftMtr.write(1800);
-      RgtMtr.write(1800);
+      WriteForwardSpeed(1700);
       delay(500);
-      LftMtr.write(1600);
-      RgtMtr.write(1600);
+      WriteForwardSpeed(1600);
       break;
     case 2:
       LftMtr.write(1450); ///should align robot bit to right **********test #s
       RgtMtr.write(1400);
       delay(500);
-      LftMtr.write(1800);
-      RgtMtr.write(1800);
+      WriteForwardSpeed(1700);
       delay(500);
-      LftMtr.write(1600);
-      RgtMtr.write(1600);
+      WriteForwardSpeed(1600);
       break;
     case 3:
       while (UltrasonicDistance != 5) { ///align tesseract in middle *******test #s, in cm
@@ -447,8 +437,7 @@ void GoHome() {
   Ping(2); 
   while (UltrasonicDistance > 10){
      Serial.println("Moving towards origin...");
-     LftMtr.write(1700);
-     RgtMtr.write(1700);
+     WriteForwardSpeed(1700);
      Position();
      Ping(2);
   } 
@@ -491,8 +480,7 @@ void Return() {
   SvdDelDisp = ((DelRgt + DelLft)/2) + sqrt((XPstn*XPstn) + (YPstn*YPstn));
   while (((abs(DelRgt) + abs(DelLft))/2) < SvdDelDisp){ //Check 
     Serial.println("Moving towards pickup position... ");
-    LftMtr.write (1700);
-    RgtMtr.write (1700);
+    WriteForwardSpeed(1700);
     Position();
   }
   
@@ -653,8 +641,7 @@ void Move() {
   while (WallDistance == false) { // approach wall
     Ping(UltrasonicPing);
     if (UltrasonicDistance > 21) {
-      RgtMotorSpeed = 1650;
-      LftMotorSpeed = 1650;
+      WriteForwardSpeed(1600);
       LftMtr.writeMicroseconds(LftMotorSpeed);
       RgtMtr.writeMicroseconds(RgtMotorSpeed);
     }
@@ -709,11 +696,6 @@ void Move() {
     FirstValue = SecondValue;
   }
 }
-
-void InitMove(){
-  accStps = 10;
-}
-
 void DropOff() {
   ArmBend.writeMicroseconds(90); // extend arm uwards
   ArmBase.writeMicroseconds(90);
@@ -724,26 +706,41 @@ void DropOff() {
     LftMtr.writeMicroseconds(1350);
     RgtMtr.writeMicroseconds(1350);
   }
-  Grip.writeMicroseconds(90); // open grip
+  Grip.writeMicroseconds(90); //  open grip
 }
 
-void motorAccelerate(unsigned uSSpd){
-  
-  for(accStps; accStps > 1; accStps--){
-    mtrPID.SetSampleTime(10);
-    PIDSpeed(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
-    Serial.println(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+//PID FUNCTIONS
+//THIS IS HOW YOU WRITE A FORWARD SPEED TO THE ROBOT.
+//IT'S THE EXACT SAME AS servoObject.write(pwmSpd)
+//pwmSpd -> desired pwm in ms
+//servoObject -> either LftMtr or RgtMtr
+void WriteForwardSpeed(unsigned pwmSpd){
+  //If the robot hasn't reached the desired speed, keep accelerating
+  if(LftMtr.readMicroseconds() != pwmSpd){//stops when desired speed is written to LftMtr
+    MotorAccelerate(pwmSpd);
   }
-  mtrPID.SetSampleTime(10);
-  PIDSpeed(uSSpd);
+  else{
+    Serial.println("begin coasting");
+    PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
+  }
 }
-void PIDSpeed(unsigned uSSpd){
-  PIDLft = LftEncdr.getSpeed();
-  PIDRgt = RgtEncdr.getSpeed();
+void MotorAccelerate(unsigned uSSpd){
+  for(int accStps = 10; accStps >= 1; accStps--){//steps to accelerate robot
+    mtrPID.SetSampleTime(10);//change this value if the robot moves off track at the beginning
+    accSpd = constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100);//left speed increases from 1500ms to target speed
+    PIDSpeed(accSpd);//sends the current speed for PID control to right motor
+  }
+  mtrPID.SetSampleTime(10);//sets sampling time for PID control 
+  PIDSpeed(uSSpd);//sets first datapoint for target speed
+  Serial.println("Finished accelerating");
+}
+void PIDSpeed(unsigned uSSpd){//used to ensure robot travels straight during constant velocity
+  PIDLft = LftEncdr.getSpeed();//set point
+  PIDRgt = RgtEncdr.getSpeed();//monitored variable
   
-  mtrPID.Compute();
+  mtrPID.Compute();//computes using Kp, Ki, Kd
   
-  LftMtr.writeMicroseconds(uSSpd);
-  RgtMtr.writeMicroseconds(PIDRgtPwr);
+  LftMtr.writeMicroseconds(uSSpd);//writes desired pwm pulse to left motor
+  RgtMtr.writeMicroseconds(PIDRgtPwr);//writes controled pwm pulse to right motor
 }
 
