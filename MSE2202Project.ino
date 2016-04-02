@@ -300,8 +300,7 @@ void Look() {
 
       if (XPos < (CourseWidth - 600)) {
         if ((((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) || ((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) {
-          RgtMtr.writeMicroseconds(ForwardSpeed);
-          LftMtr.writeMicroseconds(ForwardSpeed);
+          WriteForwardSpeed(1700);
         }
         else
           PickUp();
@@ -343,21 +342,17 @@ void PickUp() {
       RgtMtr.write(1450); ///this should align robot a bit to left  *******test #s
       LftMtr.write(1400);
       delay(500);
-      LftMtr.write(1800);
-      RgtMtr.write(1800);
+      WriteForwardSpeed(1700);
       delay(500);
-      LftMtr.write(1600);
-      RgtMtr.write(1600);
+      WriteForwardSpeed(1600);
       break;
     case 2:
       LftMtr.write(1450); ///should align robot bit to right **********test #s
       RgtMtr.write(1400);
       delay(500);
-      LftMtr.write(1800);
-      RgtMtr.write(1800);
+      WriteForwardSpeed(1700);
       delay(500);
-      LftMtr.write(1600);
-      RgtMtr.write(1600);
+      WriteForwardSpeed(1600);
       break;
     case 3:
       while (UltrasonicDistance != 5) { ///align tesseract in middle *******test #s, in cm
@@ -442,8 +437,7 @@ void GoHome() {
   Ping(2); 
   while (UltrasonicDistance > 10){
      Serial.println("Moving towards origin...");
-     LftMtr.write(1700);
-     RgtMtr.write(1700);
+     WriteForwardSpeed(1700);
      Position();
      Ping(2);
   } 
@@ -486,8 +480,7 @@ void Return() {
   SvdDelDisp = ((DelRgt + DelLft)/2) + sqrt((XPstn*XPstn) + (YPstn*YPstn));
   while (((abs(DelRgt) + abs(DelLft))/2) < SvdDelDisp){ //Check 
     Serial.println("Moving towards pickup position... ");
-    LftMtr.write (1700);
-    RgtMtr.write (1700);
+    WriteForwardSpeed(1700);
     Position();
   }
   
@@ -648,8 +641,7 @@ void Move() {
   while (WallDistance == false) { // approach wall
     Ping(UltrasonicPing);
     if (UltrasonicDistance > 21) {
-      RgtMotorSpeed = 1650;
-      LftMotorSpeed = 1650;
+      WriteForwardSpeed(1600);
       LftMtr.writeMicroseconds(LftMotorSpeed);
       RgtMtr.writeMicroseconds(RgtMotorSpeed);
     }
