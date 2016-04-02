@@ -7,6 +7,11 @@
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
+//Testing Variables 
+unsigned prevTime1 = 0;
+unsigned prevTime2 = 0;
+unsigned testTime = 0;
+
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
@@ -177,14 +182,24 @@ void setup() {
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
-  WriteForwardSpeed(1700);
+  Position();
 
-
-  /*Look();
-  if (StartTracking) {
-
-    TrackPosition();
-  }*/
+  if(millis() <= 3000){
+    WriteForwardSpeed(1700);
+  }
+  
+  else if((millis() <= 5000) && (millis() >= 3000)){
+    LftMtr.writeMicroseconds(1800);
+    RgtMtr.writeMicroseconds(1550);
+  }
+  
+  else if((millis() <= 8000) && (millis() >= 5000)){
+    WriteForwardSpeed(1700);
+  }
+  
+  else{
+    GoHome();
+  }
 }
 
 //functions
