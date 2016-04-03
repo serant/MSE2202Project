@@ -3,12 +3,19 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
+<<<<<<< HEAD
+=======
+#include "PID_v1.h"
+const unsigned long CourseWidth = 6000; //course width in mm
+unsigned long XPos = 0;
+>>>>>>> refs/remotes/origin/master
 
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
+//#define DEBUG_PID
 
 //Flags/Switches
 bool StartLooking = true;
@@ -28,9 +35,16 @@ int currentHallRead;
 int lastHallRead;
 
 //Mechanical Information
+<<<<<<< HEAD
 unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
 unsigned ForwardSpeed = 1650; //speed of robot while looking in mode 1
 unsigned Stop = 1500;
+=======
+unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
+unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
+unsigned LftSpeed = 0;
+unsigned RgtSpeed = 0;
+>>>>>>> refs/remotes/origin/master
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
@@ -45,6 +59,7 @@ unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
 unsigned int timer;
 unsigned long timerStart;
+
 
 
 Servo LftMtr;
@@ -69,9 +84,10 @@ unsigned int ModeIndicator[6] = {
   0xFFFF
 };
 
-//pins
+//pins FINALIZED DO NOT CHANGE THIS///////////////////
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
+<<<<<<< HEAD
 const int ArmBasePin = 6;
 const int ArmBendPin = 7;
 const int GripPin = 10;
@@ -81,8 +97,23 @@ const int HallLft = A1;
 const int GripLight = A2;
 const int HallGrip = A3;
 //*****cannot plug into A4 or A5
+=======
+const int ArmBasePin = 26;
+const int ArmBendPin = 27;
+const int WristPin = 10;//********
+const int GripPin = 11;//********
+const int HallRgt = A0;
+const int HallLft = A1;
+
+const int GripLight = A2;
+const int HallGrip = A3;//************
+const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
+const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
+>>>>>>> refs/remotes/origin/master
 const int UltrasonicPing = 2;//data return in 3
+//ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
+//ULTRASONIC SIDE DATA RETURN ON D9
 
 // variables
 unsigned int MotorSpeed;
@@ -92,8 +123,22 @@ unsigned int LftMotorPos;
 unsigned int RgtMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
+<<<<<<< HEAD
 long lftEncoderCounter;
 long rgtEncoderCounter;
+=======
+
+//PID Control
+double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
+double PIDRgt, PIDRgtPwr, PIDLft;
+double Kp = 11.9, Ki =100, Kd = 0.00001;
+int accStps = 10;
+
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
+unsigned long prevTime = 0;
+unsigned long currentTime = 0;
+int i = 0;
+>>>>>>> refs/remotes/origin/master
 
 // Tracking Variables
 unsigned long CourseWidth = 150; //course width in cm, has to be set prior to running
@@ -153,7 +198,12 @@ void setup() {
 
   pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin);
+<<<<<<< HEAD
   ArmBend.write(150);
+=======
+  
+  pinMode(7, INPUT);
+>>>>>>> refs/remotes/origin/master
 
   pinMode(GripLight, INPUT);
 
@@ -162,10 +212,24 @@ void setup() {
   pinMode(UltrasonicPing + 1, INPUT);
   pinMode (UltrasonicPingSide, OUTPUT);
   pinMode(UltrasonicPingSide + 1, INPUT);
+<<<<<<< HEAD
+=======
+
+  HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
+  
+  mtrPID.SetMode(AUTOMATIC);
+  mtrPID.SetOutputLimits(1570,1830);
+  mtrPID.SetSampleTime(10);
+
+>>>>>>> refs/remotes/origin/master
 }
 
 void loop() {
+<<<<<<< HEAD
   //***************************stuff running through every time
+=======
+  //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
+>>>>>>> refs/remotes/origin/master
   DebuggerModule();
   timer = millis() / 1000; //time in seconds
 
@@ -367,6 +431,18 @@ void DebuggerModule() {
   Serial.print(LftMotorPos);
   Serial.print(", R: ");
   Serial.println(RgtMotorPos);
+#endif
+
+#ifdef DEBUG_PID
+  if((millis() - prevTime) >=12){
+    prevTime = millis();
+    Serial.print("Left Input: ");
+    Serial.println(PIDLft);
+    Serial.print("Current Right Speed: ");
+    Serial.println(PIDRgt);
+    Serial.print("Current Right Power: ");
+    Serial.println(PIDRgtPwr);
+  }
 #endif
 }
 
@@ -786,6 +862,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   delay(1000);
 
+<<<<<<< HEAD
   RgtMtr.writeMicroseconds(1650);
   LftMtr.writeMicroseconds(1650);
   delay(3000);
@@ -793,6 +870,10 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   delay(2000);
 //  DropOff();
+=======
+void InitMove(){
+  accStps = 10;
+>>>>>>> refs/remotes/origin/master
 }
 
 void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
@@ -809,9 +890,33 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   ArmBend.writeMicroseconds(0);
   Wrist.write(70);
   Grip.writeMicroseconds(90); // open grip
+<<<<<<< HEAD
   delay(100);
   ArmBend.writeMicroseconds(180); //fold up arm
   ArmBase.writeMicroseconds(37);
+=======
+}
+
+void motorAccelerate(unsigned uSSpd){
+  
+  for(accStps; accStps > 1; accStps--){
+    mtrPID.SetSampleTime(10);
+    PIDSpeed(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+    Serial.println(constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100));
+  }
+  mtrPID.SetSampleTime(10);
+  PIDSpeed(uSSpd);
+}
+void PIDSpeed(unsigned uSSpd){
+  PIDLft = LftEncdr.getSpeed();
+  PIDRgt = RgtEncdr.getSpeed();
+  
+  mtrPID.Compute();
+  
+  LftMtr.writeMicroseconds(uSSpd);
+  RgtMtr.writeMicroseconds(PIDRgtPwr);
+}
+>>>>>>> refs/remotes/origin/master
 
   for (int i = millis(); millis() - i < 2000;) {
     LftMtr.writeMicroseconds(1350);
