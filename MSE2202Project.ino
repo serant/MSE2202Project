@@ -19,7 +19,7 @@ unsigned pickedUp;
 bool start = true;
 
 //Hall Sensor Stuff
-#define NOFIELDGRIP 505L
+#define NOFIELDGRIP 513L
 #define NOFIELDRGT 512L
 #define NOFIELDLFT 503L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
@@ -51,7 +51,7 @@ Servo LftMtr;
 Servo ArmBend;    //out -> folded 0->180
 Servo ArmBase;    //folded->out  37-180
 Servo RgtMtr;
-Servo Grip;       //90 open (grip hits acrylic), 180 closed max, 150 parallel
+Servo Grip;       //110 open (grip hits acrylic), 180 closed max, 150 parallel
 Servo Wrist;      //0 min folded up, 50 straight out, 180 folded down
 I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
@@ -134,7 +134,7 @@ void setup() {
 
   pinMode(GripPin, OUTPUT);
   Grip.attach(GripPin);
-  Grip.write(90);
+  Grip.write(110);
 
   pinMode(WristPin, OUTPUT);
   Wrist.attach(WristPin);
@@ -193,8 +193,6 @@ void loop() {
 
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ Serial.println("In Mode 0");
-      LftMtr.write(1500);
-      RgtMtr.write(1500);
 
 
       break;
@@ -384,68 +382,60 @@ void TrackPosition() {
 
 void PickUp() {
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
-  while (!((analogRead(HallGrip) - NOFIELDGRIP > HallThreshold) || (analogRead(HallGrip) - NOFIELDGRIP < -HallThreshold))) {
+  Serial.println(analogRead(HallLft) - NOFIELDLFT);
+  Serial.println(analogRead(HallRgt) - NOFIELDRGT);
+  Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
+  while (((analogRead(HallGrip) - NOFIELDGRIP) < HallThreshold)) {
     //drop tesseract if not magnetic, first run will drop anyway
+    Serial.println("inloop");
+    if ((analogRead(HallLft) - NOFIELDLFT > HallThreshold) || (analogRead(HallLft) - NOFIELDLFT < -HallThreshold)) {
+      AnyUse = 1;//tess near left
+    }
+    else if ((analogRead(HallRgt) - NOFIELDRGT > HallThreshold) || (analogRead(HallRgt) - NOFIELDRGT < -HallThreshold)) {
+      AnyUse = 2; // tess near right
+    }
+    switch (AnyUse) {
+      case 2:  //tessseract on right, rotates left
+        RgtMtr.write(1400);
+        LftMtr.write(1450);
+        delay(200);
+        LftMtr.write(1500);
+        RgtMtr.write(1500);
+        break;
+      case 1:
+        while (!(((analogRead(HallLft) - NOFIELDLFT > HallThreshold) || (analogRead(HallLft) - NOFIELDLFT < -HallThreshold)) && ((analogRead(HallRgt) - NOFIELDRGT > HallThreshold) || (analogRead(HallRgt) - NOFIELDRGT < -HallThreshold)))) {
+          if ((analogRead(HallRgt) - NOFIELDRGT > HallThreshold) || (analogRead(HallRgt) - NOFIELDRGT < -HallThreshold)) {
+            AnyUse = 3;
+          }
+          else AnyUse = 1;
+          RgtMtr.write(1500 + (125 * (2 - AnyUse)));
+          LftMtr.write(1500 - (125 * (2 - AnyUse)));
+          delay(50);
+        }
+        LftMtr.writeMicroseconds(Stop);
+        RgtMtr.writeMicroseconds(Stop);
+        Grip.write(110);  //open grip
+        Wrist.write(140);
+        delay(200);
+        ArmBase.write(110);      // 37 folded, 180 out
+        ArmBend.write(150);    //180 folded, 0 out
+        delay(500);
+        Grip.write(150);   //close grip
+        delay(500);
+        ArmBase.write(40);
+        ArmBend.write(160);
+        delay(300);
+        Wrist.write(100);
+        break;
+    }
+
     ArmBase.write(45);
     ArmBend.write(0);
     delay(500);
-    Grip.write(90);
+    Grip.write(110);
     delay(200);
     ArmBend.write(180);
 
-    if ((analogRead(HallLft) - NOFIELDLFT > HallThreshold) || (analogRead(HallLft) - NOFIELDLFT < -HallThreshold)) {
-      AnyUse = 1;//tess to left
-    }
-    if ((analogRead(HallRgt) - NOFIELDRGT > HallThreshold) || (analogRead(HallRgt) - NOFIELDRGT < -HallThreshold)) {
-      if (AnyUse == 1) AnyUse = 3; // tess in middle
-      else AnyUse = 2;  // tess to right
-    }
-    switch (AnyUse) {
-      case 1:
-        RgtMtr.write(1450); ///align robot a bit to left  *******test #s
-        LftMtr.write(1400);
-        delay(500);
-        LftMtr.write(1800);
-        RgtMtr.write(1800);
-        delay(500);
-        LftMtr.write(1600);
-        RgtMtr.write(1600);
-        break;
-      case 2:
-        LftMtr.write(1450); ///align robot bit to right **********test #s
-        RgtMtr.write(1400);
-        delay(500);
-        LftMtr.write(1800);
-        RgtMtr.write(1800);
-        delay(500);
-        LftMtr.write(1600);
-        RgtMtr.write(1600);
-        break;
-      case 3:
-        while (UltrasonicDistance != 5) { ///align tesseract in middle *******test #s, in cm
-          Ping(UltrasonicPingSide);
-          if (UltrasonicDistance < 5) AnyUse = 100;
-          else AnyUse = -100;
-          LftMtr.write(Stop + AnyUse);
-          RgtMtr.write(Stop - AnyUse);
-          break;
-
-          UltrasonicDistance = 0;
-          LftMtr.write(1600);
-          RgtMtr.write(1600);
-
-          Grip.write(90);  //open grip
-          Wrist.write(100);
-          ArmBase.write(110);      // 37 folded, 180 out
-          ArmBend.write(150);    //180 folded, 0 out
-          delay(500);
-          Grip.write(150);   //close grip
-          delay(500);
-          ArmBase.write(40);
-          ArmBend.write(160);
-          Wrist.write(100);
-        }
-    }
   }
   return;//good tesseract
 }
@@ -617,7 +607,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
 
-  Grip.write(90); // open grip
+  Grip.write(110); // open grip
   ArmBend.write(165); // extend arm, grip above tesseract
   ArmBase.write(90);
   Wrist.write(170);
@@ -674,22 +664,32 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
 }
 
 void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
-  ArmBend.writeMicroseconds(20); // extend arm uwards
-  ArmBase.writeMicroseconds(90);
-  Wrist.write(70); // 70 --> bent, 180 --> straight
-  delay(500);
+  Grip.write(175);
+  delay(1000);
+  ArmBase.write(40);
+  delay(300);
+  ArmBend.write(15);
+  delay(300);
+  ArmBase.write(80);
+  delay(300);
+  ArmBend.write(50);
+  Wrist.write(18);
+  delay(1000);
+
   while (analogRead(2) > 950) { // over 1000 --> light, less than 500 -->dark
     LftMtr.writeMicroseconds(1350);
     RgtMtr.writeMicroseconds(1350);
   }
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
-  ArmBend.writeMicroseconds(0);
-  Wrist.write(70);
-  Grip.writeMicroseconds(90); // open grip
+  ArmBase.write(85);
+  ArmBend.write(40);
+  Wrist.write(25);
+  delay(300);
+  Grip.write(110); // open grip
   delay(100);
   ArmBend.writeMicroseconds(180); //fold up arm
-  ArmBase.writeMicroseconds(37);
+  ArmBase.writeMicroseconds(45);
 
   for (int i = millis(); i - millis() < 2000; i = millis()) {
     LftMtr.writeMicroseconds(1400);
