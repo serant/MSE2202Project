@@ -24,7 +24,7 @@ unsigned testTime = 0;
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
-bool TurnRight = true;
+bool TurnRight = false;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
@@ -76,10 +76,10 @@ unsigned int ModeIndicator[6] = {
 //pins FINALIZED DO NOT CHANGE THIS///////////////////
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
-const int ArmBasePin = 6;
-const int ArmBendPin = 7;
-const int WristPin = 10;//********
-const int GripPin = 11;//********
+const int ArmBasePin = 26;
+const int ArmBendPin = 27;
+const int WristPin = 210;//********
+const int GripPin = 211;//********
 const int HallRgt = A0;
 const int HallLft = A1;
 const int GripLight = A2;
@@ -127,6 +127,8 @@ double PickUpTheta = 0;
 double XPstn = 1;
 double YPstn = 0;
 double SvdDelDisp = 0;
+unsigned targetTheta = 0; //used for reorienting robot
+
 
 int StepIndex;
 
@@ -183,23 +185,21 @@ void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
   Position();
-
-  if(millis() <= 3000){
+  while(millis() < 5000)
+  {
     WriteForwardSpeed(1700);
   }
-  
-  else if((millis() <= 5000) && (millis() >= 3000)){
-    LftMtr.writeMicroseconds(1800);
-    RgtMtr.writeMicroseconds(1550);
+  while(millis() < 6000)
+  {
+    LftMtr.writeMicroseconds(1600);
+    RgtMtr.writeMicroseconds(1400);
   }
   
-  else if((millis() <= 8000) && (millis() >= 5000)){
+  while(millis() < 10000)
+  {
     WriteForwardSpeed(1700);
   }
-  
-  else{
-    GoHome();
-  }
+  GoHome();
 }
 
 //functions
@@ -407,8 +407,8 @@ void Position() {
   OrTheta = ((DelRgt - DelLft)/115.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
   OrTheta = (int)OrTheta%360; //If the magnitude of the orientation is greater than 360
 
-  //Serial.print("Orientation Theta: ");
-  //Serial.println(OrTheta); // Theta from wherever the bot was first placed 
+  Serial.print("Orientation Theta: ");
+  Serial.println(OrTheta); // Theta from wherever the bot was first placed 
   
   XPstn = DelDsp * cos((OrTheta*PI)/180);
   YPstn = DelDsp * sin((OrTheta*PI)/180);
@@ -417,8 +417,8 @@ void Position() {
   //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
   //Serial.println(YPstn); 
   PolTheta = (atan(YPstn/XPstn) * (180/PI));//The polar angle of the position of the robot
-  //Serial.print("Pol Theta: ");
-  //Serial.println(PolTheta);
+  Serial.print("Pol Theta: ");
+  Serial.println(PolTheta);
 }
 
 void GoHome() {
@@ -428,16 +428,20 @@ void GoHome() {
   for (int i = 0; i>0; i++){
     SvdDsp = Dsp; 
     PickUpTheta = PolTheta;
+    Serial.println("saved values");
   }
   
   if (!TurnRight){ //Turn number is even 
-   while (!(OrTheta < (PolTheta + 185) && OrTheta > (PolTheta + 175))){
+   targetTheta = PolTheta;
+   while (!(OrTheta < (targetTheta + 185) && OrTheta > (targetTheta + 175))){
     Serial.println("Alinging Bot, even turn...");
     LftMtr.write(1350);
     RgtMtr.write(1650);
     Position();
-  }
-  } else { // Turn number is odd
+    }
+  } 
+  else { // Turn number is odd
+    targetTheta = PolTheta;
     while (!(OrTheta < (PolTheta +5) && OrTheta > (PolTheta - 5))){//Test
     Serial.println("Alinging Bot, odd turn...");
     LftMtr.write(1650);
@@ -452,6 +456,7 @@ void GoHome() {
   Ping(2); 
   while (UltrasonicDistance > 10){
      Serial.println("Moving towards origin...");
+     Serial.print(UltrasonicDistance * 58, DEC);
      WriteForwardSpeed(1700);
      Position();
      Ping(2);
@@ -735,7 +740,7 @@ void WriteForwardSpeed(unsigned pwmSpd){
     MotorAccelerate(pwmSpd);
   }
   else{
-    Serial.println("begin coasting");
+    //Serial.println("begin coasting");
     PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
   }
 }
@@ -747,7 +752,7 @@ void MotorAccelerate(unsigned uSSpd){
   }
   mtrPID.SetSampleTime(10);//sets sampling time for PID control 
   PIDSpeed(uSSpd);//sets first datapoint for target speed
-  Serial.println("Finished accelerating");
+  //Serial.println("Finished accelerating");
 }
 void PIDSpeed(unsigned uSSpd){//used to ensure robot travels straight during constant velocity
   PIDLft = LftEncdr.getSpeed();//set point
