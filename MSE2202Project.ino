@@ -49,9 +49,9 @@ unsigned long timerStart;
 
 Servo LftMtr;
 Servo ArmBend;    //out->folded 0 ->180
-Servo ArmBase;    //folded-> out 180->0
+Servo ArmBase;    //folded-> out 40->180
 Servo RgtMtr;
-Servo Grip;       //90 open (grip hits acrylic), 180 closed max, 150 parallel
+Servo Grip;       //100 open (grip hits acrylic), 170 closed max, 150 parallel
 Servo Wrist;      //0 min folded up, 50 straight out, 180 folded down
 I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
