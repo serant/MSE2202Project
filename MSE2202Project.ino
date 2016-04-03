@@ -3,19 +3,16 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-<<<<<<< HEAD
-=======
 #include "PID_v1.h"
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
->>>>>>> refs/remotes/origin/master
 
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
 //#define DEBUG_ENCODERS
-//#define DEBUG_PID
+//#define DEBUG_PID m
 
 //Flags/Switches
 bool StartLooking = true;
@@ -35,16 +32,13 @@ int currentHallRead;
 int lastHallRead;
 
 //Mechanical Information
-<<<<<<< HEAD
 unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
 unsigned ForwardSpeed = 1650; //speed of robot while looking in mode 1
 unsigned Stop = 1500;
-=======
 unsigned WheelPerimeter = 63; //perimeter of wheel in mm <- NEEDS TO BE MEASURED
 unsigned ForwardSpeed = 1800; //speed of robot while looking in mode 1
 unsigned LftSpeed = 0;
 unsigned RgtSpeed = 0;
->>>>>>> refs/remotes/origin/master
 
 //Line Tracker Stuff
 unsigned LineTrackerData = 0;
@@ -97,7 +91,6 @@ const int HallLft = A1;
 const int GripLight = A2;
 const int HallGrip = A3;
 //*****cannot plug into A4 or A5
-=======
 const int ArmBasePin = 26;
 const int ArmBendPin = 27;
 const int WristPin = 10;//********
@@ -109,7 +102,6 @@ const int GripLight = A2;
 const int HallGrip = A3;//************
 const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
 const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
->>>>>>> refs/remotes/origin/master
 const int UltrasonicPing = 2;//data return in 3
 //ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
@@ -123,10 +115,8 @@ unsigned int LftMotorPos;
 unsigned int RgtMotorPos;
 unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
-<<<<<<< HEAD
 long lftEncoderCounter;
 long rgtEncoderCounter;
-=======
 
 //PID Control
 double targetSpeed, leftInput, rightInput, leftOutput, rightOutput;
@@ -138,7 +128,6 @@ PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);
 unsigned long prevTime = 0;
 unsigned long currentTime = 0;
 int i = 0;
->>>>>>> refs/remotes/origin/master
 
 // Tracking Variables
 unsigned long CourseWidth = 150; //course width in cm, has to be set prior to running
@@ -198,12 +187,8 @@ void setup() {
 
   pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin);
-<<<<<<< HEAD
-  ArmBend.write(150);
-=======
-  
+  ArmBend.write(150);  
   pinMode(7, INPUT);
->>>>>>> refs/remotes/origin/master
 
   pinMode(GripLight, INPUT);
 
@@ -212,8 +197,6 @@ void setup() {
   pinMode(UltrasonicPing + 1, INPUT);
   pinMode (UltrasonicPingSide, OUTPUT);
   pinMode(UltrasonicPingSide + 1, INPUT);
-<<<<<<< HEAD
-=======
 
   HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
   
@@ -221,15 +204,11 @@ void setup() {
   mtrPID.SetOutputLimits(1570,1830);
   mtrPID.SetSampleTime(10);
 
->>>>>>> refs/remotes/origin/master
 }
 
 void loop() {
-<<<<<<< HEAD
   //***************************stuff running through every time
-=======
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
->>>>>>> refs/remotes/origin/master
   DebuggerModule();
   timer = millis() / 1000; //time in seconds
 
