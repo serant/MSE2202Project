@@ -225,7 +225,13 @@ void loop() {
         for(int j = 180; j < 0; j++){
           Wrist.write(j);
         } */
-      Move();
+       ArmBase.write(90); // 37 - 179 folded to out
+        ArmBend.write(115); // 0 -180 out to folded
+        Grip.write(170); // closed grip
+        Wrist.write(100);
+        Ping(UltrasonicPing);
+        Serial.println(UltrasonicDistance);
+      
       break;
 
     case 1: /**********************************mode 1 base = look */ Serial.println("In mode 1");
@@ -274,16 +280,28 @@ void loop() {
 
       case 2:  /********************mode 2 base = check   */ Serial.println("In mode 2");
         //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
-
         // Robo --> back and forth scanning motion
         lastHallRead = analogRead(HallGrip);
         lftEncoderCounter = LftEncdr.getRawPosition();
         rgtEncoderCounter = RgtEncdr.getRawPosition();
 
         ArmBase.write(90); // 37 - 179 folded to out
-        ArmBend.write(110); // 0 -180 out to folded
-        Grip.write(180);
-        Wrist.write(60);
+        ArmBend.write(115); // 0 -180 out to folded
+        Grip.write(170); // closed grip
+        Wrist.write(100);
+        delay(1000);
+        Ping(UltrasonicPing);
+        
+        while(UltrasonicDistance > 22){ // distance to wall = 22
+          LftMtr.writeMicroseconds(1625);
+          RgtMtr.writeMicroseconds(1625);
+          delay(50);
+          LftMtr.writeMicroseconds(1500);
+          RgtMtr.writeMicroseconds(1500);
+          delay(50);
+          Ping(UltrasonicPing);
+          
+        }
 
         for (lftEncoderCounter; lftEncoderCounter < 10; lftEncoderCounter++) {
           LftMtr.writeMicroseconds(1625);
@@ -776,10 +794,12 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   RgtMtr.writeMicroseconds(1500);
   delay(2000);
 
-  Grip.write(90); // open grip
-  ArmBend.write(120); // extend arm, grip above tesseract
-  delay(300);
-  Grip.write(180); // close grip
+  Grip.write(100); // 50 -110 --> open to closed
+  delay(700);
+  ArmBend.write(115); // extend arm, grip above tesseract
+  ArmBase.write(95);
+  delay(700);
+  Grip.write(170); // close grip
   delay(1000);
 
   ArmBend.write(180);
