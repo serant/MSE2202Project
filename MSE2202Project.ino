@@ -463,6 +463,7 @@ void GoHome() {
   } 
   LftMtr.write(1500);
   RgtMtr.write(1500);
+  Return();
 }
 
 
