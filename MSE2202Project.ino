@@ -277,7 +277,9 @@ void DebuggerModule() {
 void Ping(int x) {
   //Ping Ultrasonic
   digitalWrite(x, HIGH);
+  mtrPID.SetMode(MANUAL);
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
+  mtrPID.SetMode(AUTOMATIC);
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) / 58);
   Serial.print("Ultrasonic distance: ");
@@ -502,9 +504,13 @@ void Return() {
   */
   Position();
   while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) {
-    Serial.println("Alinging Bot with saved polar theta...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
+    Serial.print("OrTheta: ");
+    Serial.println(OrTheta);
+    
+    Serial.print("PickUpTheta: ");
+    Serial.println(PickUpTheta);
+    LftMtr.write(1650);
+    RgtMtr.write(1350);
     Position();
   }
 
@@ -513,7 +519,7 @@ void Return() {
 
   savedLftEncdrReturn = abs(LftEncdr.getRawPosition());
   //savedRgtEncdrReturn = abs(RgtEncdr.getRawPosition());
-  while (abs(savedLftEncdrReturn) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
+  while (abs(LftEncdr.getRawPosition()) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
     Serial.println("Moving towards pickup position... ");
     WriteForwardSpeed(1700);
     Position();
