@@ -462,7 +462,7 @@ void GoHome() {
 
   savedLftEncdr = abs(LftEncdr.getRawPosition());
   //savedRgtEncdr = abs(RgtEncdr.getRawPosition());
-  while (UltrasonicDistance > 10) {
+  while ((UltrasonicDistance > 10) && (UltrasonicDistance != 0)) {
 
     Serial.println("Moving towards origin...");
     Serial.print(UltrasonicDistance * 58, DEC);
@@ -501,10 +501,12 @@ void Return() {
 
   */
   Position();
-  while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) {
+  Serial.println(PickUpTheta);
+  while (!(OrTheta < (PickUpTheta +5) && OrTheta > (PickUpTheta - 5))) { // was +5 and -5
     Serial.println("Alinging Bot with saved polar theta...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
+    Serial.println(OrTheta);
+    LftMtr.write(1650);
+    RgtMtr.write(1350);
     Position();
   }
 
@@ -513,7 +515,7 @@ void Return() {
 
   savedLftEncdrReturn = abs(LftEncdr.getRawPosition());
   //savedRgtEncdrReturn = abs(RgtEncdr.getRawPosition());
-  while (abs(savedLftEncdrReturn) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
+  while (abs(LftEncdr.getRawPosition()) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
     Serial.println("Moving towards pickup position... ");
     WriteForwardSpeed(1700);
     Position();
