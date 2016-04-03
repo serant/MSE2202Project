@@ -4,13 +4,15 @@
 #include <Wire.h>
 #include <uSTimer2.h>
 #include "PID_v1.h"
-const unsigned long CourseWidth = 6000; //course width in mm
+const unsigned CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
-//Testing Variables
-unsigned prevTime1 = 0;
-unsigned prevTime2 = 0;
-unsigned testTime = 0;
+//Testing Variables 
+unsigned long prevTime1 = 0;
+unsigned long prevTime2 = 0;
+unsigned long testTime = 0;
+unsigned long timerStart;
+unsigned long timer;
 
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
@@ -25,9 +27,13 @@ bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
 bool TurnRight = false;
+bool startTask = true;
 
 //Hall Sensor Stuff
 #define NOFIELD 505L
+#define NOFIELDLFT  503L
+#define NOFIELDRGT 512L
+#define NOFIELDGRIP 513L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
 const unsigned HallThreshold = 20; //<- NEEDS TO BE MEASURED
 unsigned int HallIdle;
@@ -185,26 +191,149 @@ void setup() {
 
 }
 void loop() {
-  //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
   Position();
-  while (millis() < 5000)
-  {
-    WriteForwardSpeed(1700);
-  }
-  while (millis() < 6000)
-  {
-    LftMtr.writeMicroseconds(1600);
-    RgtMtr.writeMicroseconds(1400);
-  }
+  timer = millis() / 1000; //time in seconds
 
-  while (millis() < 10000)
-  {
-    WriteForwardSpeed(1700);
+  if (timer % 30 < 1) {
+    Serial.print("time = ");
+    Serial.println(timer);
   }
-  GoHome();
-  delay (3000);
-  Return();
+  if (timer >= 240) {  //4 min time limit
+    Serial.println("Look: GoHome called");
+    GoHome();       
+    ModeIndex = 0;
+  }
+  if (startTask) {       //only runs this until mode started, 1 sec delay, must reset to change mode
+    if (digitalRead(13)) {   //switch 1 up = stay in 0, down = start mode 1 or 2
+      startTask = false;
+      timerStart = millis();
+      if (digitalRead(12)) ModeIndex = 2; // switch 3 and 1 on (down)
+      else  ModeIndex = 1; // switch 3 off (up), 1 on (down)
+      delay(1000);
+    }
+    else ModeIndex = 0; // switch 1 off(up), select mode then turn switch 1 on(down) when want to start
+  }
+  if (!(digitalRead(13))) ModeIndex = 0;
+
+  switch (ModeIndex) {
+    case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ 
+    Serial.println("Main Loop: In Mode 0");
+
+
+      break;
+
+    case 1: /**********************************mode 1 base = look */ 
+      Serial.println("Main Loop: In mode 1");
+
+      //Looks for Blocks
+      if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left
+      else if((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0);
+
+      //Pings to detect if wall is in front
+      Ping(UltrasonicPing);
+      if(UltrasonicDistance <= 10){//if wall is 10cm or closer
+        Serial.print("turning  ");
+        Serial.println(UltrasonicDistance);
+        RgtMtr.writeMicroseconds(Stop);//stops to prepare for turn
+        LftMtr.writeMicroseconds(Stop);
+        delay(100);
+
+        if (TurnRight) {//if turning right...
+          while ((LftEncdr.getRawPosition() < LftEncdr.getRawPosition() + 980)) {
+            LftMtr.writeMicroseconds(1600);
+          }
+          LftMtr.writeMicroseconds(1500);
+          delay(3000);
+        }
+        else {//if turning left...
+          while (RgtEncdr.getRawPosition() < (RgtEncdr.getRawPosition() + 980)) {
+            RgtMtr.writeMicroseconds(1600);
+          }
+          RgtMtr.writeMicroseconds(1500);
+          delay(3000);
+        }
+        delay(5000);
+        TurnRight = !TurnRight;
+      }
+
+      WriteForwardSpeed(1700);
+      break;
+
+    /*case 2:  /********************mode 2 base = check    Serial.println("In mode 2");
+      //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+
+      // Robo --> back and forth scanning motion
+      lastHallRead = analogRead(HallGrip);
+      lftEncoderCounter = LftEncdr.getRawPosition();
+      rgtEncoderCounter = RgtEncdr.getRawPosition();
+
+      ArmBase.write(100); // 37 - 179 folded to out
+      ArmBend.write(110); // 0 -180 out to folded
+
+      LftMtr.writeMicroseconds(1650);
+      for (lftEncoderCounter; lftEncoderCounter < 40; lftEncoderCounter++) {
+        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+        Serial.print("Left Encoder Forward: ");
+        Serial.println(lftEncoderCounter);
+        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+          Move();
+        }
+      }
+      LftMtr.writeMicroseconds(1500);
+      for (lftEncoderCounter; lftEncoderCounter > 0; lftEncoderCounter--) {
+        currentHallRead = analogRead(HallGrip);
+        Serial.print("Left Encoder Backward: ");
+        Serial.println(lftEncoderCounter);
+        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+          Move();
+        }
+      }
+      LftMtr.writeMicroseconds(1500);
+      delay(200);
+
+      RgtMtr.writeMicroseconds(1650);
+      for (rgtEncoderCounter; rgtEncoderCounter < 40; rgtEncoderCounter++) {
+        currentHallRead = analogRead(HallGrip);
+        Serial.print("Right Encoder Forward: ");
+        Serial.println(rgtEncoderCounter);
+        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+          Move();
+        }
+      }
+      RgtMtr.writeMicroseconds(1500);
+      for (rgtEncoderCounter; rgtEncoderCounter > 0; rgtEncoderCounter--) {
+        currentHallRead = analogRead(HallGrip);
+        Serial.print("Right Encoder Backward: ");
+        Serial.println(rgtEncoderCounter);
+        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+          Move();
+        }
+      }
+      RgtMtr.writeMicroseconds(1500);
+      delay(200);
+
+      break;*/
+
+    case 3:
+
+      break;
+
+    case 4:
+
+      break;
+
+    case 5:
+
+      break;
+    case 6:
+
+      break;
+    case 7:
+
+      break;
+      //etc. add as needed
+  }
 }
 
 //functions
@@ -300,53 +429,12 @@ void TrackPosition() {
   }
 }
 //Mode 1
-void Look() {
-  //if already found tesseract-> run 'Return', else-> robot starts looking for tesseracts,
-  //if detects tesseract stops and runs 'PickUp'
-  //needs to keep track of position? for 'GoHome' /OR/ 'GoHome' can find home position from where it is
-  //needs collision avoidance system -> runs 'Countermeasures'?
-
-  LftEncdr.zero();
-  RgtEncdr.zero();
-
-  //Step 1 -> turn left
-  if (StartLooking) {
-    RgtMtr.write(RgtMtr.read() + WheelPerimeter);
-    LftMtr.write(LftMtr.read() - WheelPerimeter);
-    StartLooking = false;
-    StartTracking = true;
-  }
-
-  if (XPos < (CourseWidth - 600)) {
-    if ((((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) || ((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) {
-
-      if (XPos < (CourseWidth - 600)) {
-        if ((((analogRead(HallLft) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) || ((analogRead(HallRgt) - NOFIELD) * TOMILLIGAUSS / 1000) < HallThreshold) {
-          WriteForwardSpeed(1700);
-        }
-        else
-          PickUp();
-      }
-
-      else { //if reaches end of course width, turn right then left
-        if (TurnRight) {
-          LftMtr.write(RgtMtr.read() + (3 * WheelPerimeter));
-          TurnRight = false;
-        }
-        else if (!TurnRight) {
-          RgtMtr.write(LftMtr.read() + (3 * WheelPerimeter));
-          TurnRight = true;
-        }
-      }
-    }
-  }
-}
 void Countermeasures() {
   //robot reacts to interference by other robot, after safe returns to 'Look'
 }
 unsigned HallLftRead, HallRgtRead;
 int turn;
-void PickUp() {
+void PickUp(unsigned side) {
   //robot has deteced tesseract in 'Look' and uses arm to pick it up, after picked up runs 'GoHome'
 
   //********something to determine position and save it*********
