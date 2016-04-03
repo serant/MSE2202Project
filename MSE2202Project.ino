@@ -277,7 +277,9 @@ void DebuggerModule() {
 void Ping(int x) {
   //Ping Ultrasonic
   digitalWrite(x, HIGH);
+  mtrPID.SetMode(MANUAL);
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
+  mtrPID.SetMode(AUTOMATIC);
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) / 58);
   Serial.print("Ultrasonic distance: ");
