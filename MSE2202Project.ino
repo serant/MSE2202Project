@@ -7,7 +7,7 @@
 const unsigned long CourseWidth = 6000; //course width in mm
 unsigned long XPos = 0;
 
-//Testing Variables 
+//Testing Variables
 unsigned prevTime1 = 0;
 unsigned prevTime2 = 0;
 unsigned testTime = 0;
@@ -84,7 +84,7 @@ const int HallRgt = A0;
 const int HallLft = A1;
 const int GripLight = A2;
 const int HallGrip = A3;//************
-const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this 
+const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this
 const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
 const int UltrasonicPing = 2;//data return in 3
 //ULTRASONIC DATA RETURN ON D3
@@ -105,7 +105,7 @@ unsigned long RightMotorOffset;
 
 //PID Control
 double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
-double Kp = 11.9, Ki =100, Kd = 0.00001;//PID parameters
+double Kp = 11.9, Ki = 100, Kd = 0.00001; //PID parameters
 unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
 PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
 
@@ -172,34 +172,36 @@ void setup() {
   pinMode(UltrasonicPingSide + 1, INPUT);
 
   HallIdle = (analogRead(HallLft) + analogRead(HallRgt) / 2); ///*********works???
-  
+
   mtrPID.SetMode(AUTOMATIC);
-  mtrPID.SetOutputLimits(1570,1830);
+  mtrPID.SetOutputLimits(1570, 1830);
   mtrPID.SetSampleTime(10);
 
   //ArmBase.write(40);
   //ArmBend.write(10);
-  
+
 }
 void loop() {
   //WHATEVER IS IN THIS LOOP MUST BE OVERWRITTEN BY THE MASTER
   DebuggerModule();
   Position();
-  while(millis() < 5000)
+  while (millis() < 5000)
   {
     WriteForwardSpeed(1700);
   }
-  while(millis() < 6000)
+  while (millis() < 6000)
   {
     LftMtr.writeMicroseconds(1600);
     RgtMtr.writeMicroseconds(1400);
   }
-  
-  while(millis() < 10000)
+
+  while (millis() < 10000)
   {
     WriteForwardSpeed(1700);
   }
   GoHome();
+  delay (3000);
+  Return();
 }
 
 //functions
@@ -219,12 +221,12 @@ void DebuggerModule() {
   Serial.print(PolTheta);
   Serial.print("   , Orientation Angle: ");
   Serial.println(OrTheta);
-  
+
   Serial.print("Cartesian: ");
   Serial.print(XPstn);
   Serial.print(", ");
   Serial.println(YPstn);
-  
+
   Serial.print("Instantaneous: ");
   Serial.print(DelDsp);
   Serial.print(", ");
@@ -257,7 +259,7 @@ void DebuggerModule() {
 #endif
 
 #ifdef DEBUG_PID
-  if((millis() - prevTime) >=12){
+  if ((millis() - prevTime) >= 12) {
     prevTime = millis();
     Serial.print("Left Input: ");
     Serial.println(PIDLft);
@@ -394,73 +396,76 @@ void PickUp() {
 }
 
 void Position() {
-  // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr  
-  // Distance travelled 
-  DelRgt = (CF * ((RgtEncdr.getRawPosition()))); // Instantaneous Distance traveled by right Wheel 
-  DelLft = (CF * ((LftEncdr.getRawPosition()))); // Instantaneous Distnace traveled by left wheel 
-  DelDsp = (DelRgt + DelLft)/2; //Distance traveled by the centerpoint of the robot, affected by quadrent
-  Dsp = Dsp + DelDsp; //Current Displacement 
-  TotalDsp = (abs(DelRgt) + abs(DelLft))/2; //Total distance travelled 
+  // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
+  // Distance travelled
+  DelRgt = (CF * ((RgtEncdr.getRawPosition()))); // Instantaneous Distance traveled by right Wheel
+  DelLft = (CF * ((LftEncdr.getRawPosition()))); // Instantaneous Distnace traveled by left wheel
+  DelDsp = (DelRgt + DelLft) / 2; //Distance traveled by the centerpoint of the robot, affected by quadrent
+  Dsp = Dsp + DelDsp; //Current Displacement
+  TotalDsp = (abs(DelRgt) + abs(DelLft)) / 2; //Total distance travelled
   //Serial.print("Displacement: ");
   //Serial.println(Dsp);
-  
-  OrTheta = ((DelRgt - DelLft)/115.5) *(180/PI); // Change in orientation, taking starting postion as Theta = 0
-  OrTheta = (int)OrTheta%360; //If the magnitude of the orientation is greater than 360
+
+  OrTheta = ((DelRgt - DelLft) / 115.5) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
+  OrTheta = (int)OrTheta % 360; //If the magnitude of the orientation is greater than 360
 
   Serial.print("Orientation Theta: ");
-  Serial.println(OrTheta); // Theta from wherever the bot was first placed 
-  
-  XPstn = DelDsp * cos((OrTheta*PI)/180);
-  YPstn = DelDsp * sin((OrTheta*PI)/180);
+  Serial.println(OrTheta); // Theta from wherever the bot was first placed
+
+  XPstn = DelDsp * cos((OrTheta * PI) / 180);
+  YPstn = DelDsp * sin((OrTheta * PI) / 180);
   //Serial.print("X: ");  //X coordinates of the robot (right is positive)
-  //Serial.println(XPstn); 
+  //Serial.println(XPstn);
   //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
-  //Serial.println(YPstn); 
-  PolTheta = (atan(YPstn/XPstn) * (180/PI));//The polar angle of the position of the robot
+  //Serial.println(YPstn);
+  PolTheta = (atan(YPstn / XPstn) * (180 / PI)); //The polar angle of the position of the robot
   Serial.print("Pol Theta: ");
   Serial.println(PolTheta);
 }
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  
+
   Position();
-  for (int i = 0; i>0; i++){
-    SvdDsp = Dsp; 
+  for (int i = 0; i > 0; i++) {
+    SvdDsp = DelDsp;
     PickUpTheta = PolTheta;
     Serial.println("saved values");
   }
-  
-  if (!TurnRight){ //Turn number is even 
-   targetTheta = PolTheta;
-   while (!(OrTheta < (targetTheta + 185) && OrTheta > (targetTheta + 175))){
-    Serial.println("Alinging Bot, even turn...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
-    Position();
+
+  if (!TurnRight) { //Turn number is even
+    targetTheta = PolTheta;
+    while (!(OrTheta < (targetTheta + 185) && OrTheta > (targetTheta + 175))) {
+      Serial.println("Alinging Bot, even turn...");
+      LftMtr.write(1350);
+      RgtMtr.write(1650);
+      Position();
     }
-  } 
+  }
   else { // Turn number is odd
     targetTheta = PolTheta;
-    while (!(OrTheta < (PolTheta +5) && OrTheta > (PolTheta - 5))){//Test
-    Serial.println("Alinging Bot, odd turn...");
-    LftMtr.write(1650);
-    RgtMtr.write(1350);
-    Position();
-    } 
+    while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta - 5))) { //Test
+      Serial.println("Alinging Bot, odd turn...");
+      LftMtr.write(1650);
+      RgtMtr.write(1350);
+      Position();
+    }
   }
-  
+
   LftMtr.write(1500);
   RgtMtr.write(1500);
-  delay(500);  
-  Ping(2); 
-  while (UltrasonicDistance > 10){
-     Serial.println("Moving towards origin...");
-     Serial.print(UltrasonicDistance * 58, DEC);
-     WriteForwardSpeed(1700);
-     Position();
-     Ping(2);
-  } 
+  //delay(500);
+  Ping(2);
+
+  savedEncdr = LftEncdr.getRawPosition();
+  while (UltrasonicDistance > 10) {
+
+    Serial.println("Moving towards origin...");
+    Serial.print(UltrasonicDistance * 58, DEC);
+    WriteForwardSpeed(1700);
+    Position();
+    Ping(2);
+  }
   LftMtr.write(1500);
   RgtMtr.write(1500);
   Return();
@@ -490,39 +495,42 @@ void Return() {
   Position();
   while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) {
     Serial.println("Alinging Bot with saved polar theta...");
-    LftMtr.write(1650);
-    RgtMtr.write(1350);
+    LftMtr.write(1350);
+    RgtMtr.write(1650);
     Position();
   }
-  
-  LftMtr.write(1500);
-  RgtMtr.write(1500);
-  
-  SvdDelDisp = ((DelRgt + DelLft)/2) + sqrt((XPstn*XPstn) + (YPstn*YPstn));
-  while (((abs(DelRgt) + abs(DelLft))/2) < SvdDelDisp){ //Check 
-    Serial.println("Moving towards pickup position... ");
-    WriteForwardSpeed(1700);
-    Position();
-  }
-  
+
   LftMtr.write(1500);
   RgtMtr.write(1500);
 
-  if (!TurnRight){ //Turn number is even 
-   while (!(OrTheta < 5 && OrTheta > -5)){
-    Serial.println("Alinging Bot with 0 degrees, even turn...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
+  SvdDelDisp = ((DelRgt + DelLft) / 2) + sqrt((XPstn * XPstn) + (YPstn * YPstn));
+  Serial.print("Saved Disp: ");
+  Serial.println(SvdDelDisp);
+  while ((((DelRgt) + (DelLft)) / 2) < SvdDelDisp) { //Check
+    Serial.println("Moving towards pickup position... ");
+    Serial.println(((((DelRgt) + (DelLft)) / 2) < SvdDelDisp));
+    WriteForwardSpeed(1700);
     Position();
   }
-  
+
+  LftMtr.write(1500);
+  RgtMtr.write(1500);
+
+  if (!TurnRight) { //Turn number is even
+    while (!(OrTheta < 5 && OrTheta > -5)) {
+      Serial.println("Alinging Bot with 0 degrees, even turn...");
+      LftMtr.write(1350);
+      RgtMtr.write(1650);
+      Position();
+    }
+
   } else { // Turn number is odd
-    while (!(OrTheta < 185 && OrTheta > 175)){
-    Serial.println("Alinging Bot with 180 degrees, odd turn...");
-    LftMtr.write(1350);
-    RgtMtr.write(1650);
-    Position();
-    } 
+    while (!(OrTheta < 185 && OrTheta > 175)) {
+      Serial.println("Alinging Bot with 180 degrees, odd turn...");
+      LftMtr.write(1350);
+      RgtMtr.write(1650);
+      Position();
+    }
   }
 }
 
@@ -735,32 +743,32 @@ void DropOff() {
 //IT'S THE EXACT SAME AS servoObject.write(pwmSpd)
 //pwmSpd -> desired pwm in ms
 //servoObject -> either LftMtr or RgtMtr
-void WriteForwardSpeed(unsigned pwmSpd){
+void WriteForwardSpeed(unsigned pwmSpd) {
   //If the robot hasn't reached the desired speed, keep accelerating
-  if(LftMtr.readMicroseconds() != pwmSpd){//stops when desired speed is written to LftMtr
+  if (LftMtr.readMicroseconds() != pwmSpd) { //stops when desired speed is written to LftMtr
     MotorAccelerate(pwmSpd);
   }
-  else{
+  else {
     //Serial.println("begin coasting");
     PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
   }
 }
-void MotorAccelerate(unsigned uSSpd){
-  for(int accStps = 10; accStps >= 1; accStps--){//steps to accelerate robot
+void MotorAccelerate(unsigned uSSpd) {
+  for (int accStps = 10; accStps >= 1; accStps--) { //steps to accelerate robot
     mtrPID.SetSampleTime(10);//change this value if the robot moves off track at the beginning
-    accSpd = constrain((1500+((uSSpd-1500)/accStps)), 1500, 2100);//left speed increases from 1500ms to target speed
+    accSpd = constrain((1500 + ((uSSpd - 1500) / accStps)), 1500, 2100); //left speed increases from 1500ms to target speed
     PIDSpeed(accSpd);//sends the current speed for PID control to right motor
   }
-  mtrPID.SetSampleTime(10);//sets sampling time for PID control 
+  mtrPID.SetSampleTime(10);//sets sampling time for PID control
   PIDSpeed(uSSpd);//sets first datapoint for target speed
   //Serial.println("Finished accelerating");
 }
-void PIDSpeed(unsigned uSSpd){//used to ensure robot travels straight during constant velocity
+void PIDSpeed(unsigned uSSpd) { //used to ensure robot travels straight during constant velocity
   PIDLft = LftEncdr.getSpeed();//set point
   PIDRgt = RgtEncdr.getSpeed();//monitored variable
-  
+
   mtrPID.Compute();//computes using Kp, Ki, Kd
-  
+
   LftMtr.writeMicroseconds(uSSpd);//writes desired pwm pulse to left motor
   RgtMtr.writeMicroseconds(PIDRgtPwr);//writes controled pwm pulse to right motor
 }
