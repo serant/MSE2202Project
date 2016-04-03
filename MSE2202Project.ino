@@ -13,7 +13,7 @@ unsigned long prevTime2 = 0;
 unsigned long testTime = 0;
 unsigned long timerStart;
 unsigned long timer;
-
+unsigned tempEncoderPosition = 0;
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
@@ -26,7 +26,7 @@ unsigned long timer;
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool StartTracking = false;
-bool TurnRight = false;
+bool TurnRight = true;
 bool startTask = true;
 
 //Hall Sensor Stuff
@@ -227,12 +227,12 @@ void loop() {
       Serial.println("Main Loop: In mode 1");
 
       //Looks for Blocks
-      if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left
-      else if((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0);
+      if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) GoHome(); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left -> REPLACE WITH PICKUP 1
+      else if((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) GoHome();// -> REPLACE WITH PICKUP 0
 
       //Pings to detect if wall is in front
       Ping(UltrasonicPing);
-      if(UltrasonicDistance <= 10){//if wall is 10cm or closer
+      if(UltrasonicDistance <= 20){//if wall is 10cm or closer
         Serial.print("turning  ");
         Serial.println(UltrasonicDistance);
         RgtMtr.writeMicroseconds(Stop);//stops to prepare for turn
@@ -240,23 +240,31 @@ void loop() {
         delay(100);
 
         if (TurnRight) {//if turning right...
-          while ((LftEncdr.getRawPosition() < LftEncdr.getRawPosition() + 980)) {
-            LftMtr.writeMicroseconds(1600);
+          tempEncoderPosition = LftEncdr.getRawPosition();
+          while ((LftEncdr.getRawPosition() < tempEncoderPosition + 980)) {
+            mtrPID.SetMode(MANUAL);
+            LftMtr.writeMicroseconds(1700);
+            RgtMtr.writeMicroseconds(1500);
           }
           LftMtr.writeMicroseconds(1500);
-          delay(3000);
-        }
-        else {//if turning left...
-          while (RgtEncdr.getRawPosition() < (RgtEncdr.getRawPosition() + 980)) {
-            RgtMtr.writeMicroseconds(1600);
-          }
           RgtMtr.writeMicroseconds(1500);
           delay(3000);
+          mtrPID.SetMode(AUTOMATIC);
         }
-        delay(5000);
+        else {//if turning left...
+          tempEncoderPosition = RgtEncdr.getRawPosition();
+          while (RgtEncdr.getRawPosition() < (tempEncoderPosition + 980)) {
+            mtrPID.SetMode(MANUAL);
+            RgtMtr.writeMicroseconds(1800);
+            LftMtr.writeMicroseconds(1500);
+          }
+          RgtMtr.writeMicroseconds(1500);
+          LftMtr.writeMicroseconds(1500);
+          delay(3000);
+          mtrPID.SetMode(AUTOMATIC);
+        }
         TurnRight = !TurnRight;
       }
-
       WriteForwardSpeed(1700);
       break;
 
