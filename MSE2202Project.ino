@@ -128,6 +128,9 @@ double XPstn = 1;
 double YPstn = 0;
 double SvdDelDisp = 0;
 unsigned targetTheta = 0; //used for reorienting robot
+double savedLftEncdr = 0;
+double LftEncdrCount = 0;
+double savedLftEncdrReturn = 0;
 
 
 int StepIndex;
@@ -457,7 +460,8 @@ void GoHome() {
   //delay(500);
   Ping(2);
 
-  savedEncdr = LftEncdr.getRawPosition();
+  savedLftEncdr = abs(LftEncdr.getRawPosition());
+  //savedRgtEncdr = abs(RgtEncdr.getRawPosition());
   while (UltrasonicDistance > 10) {
 
     Serial.println("Moving towards origin...");
@@ -466,6 +470,10 @@ void GoHome() {
     Position();
     Ping(2);
   }
+  LftEncdrCount = abs(LftEncdr.getRawPosition()) - savedLftEncdr;
+  //RgtEncdrCount = abs(Rgt.Encdr.getRawPosition()) - savedRgtEncdr;
+  //TravelEncdrCount = (LftEncdrCount + RgtEncdrCount )/2;
+
   LftMtr.write(1500);
   RgtMtr.write(1500);
   Return();
@@ -503,16 +511,24 @@ void Return() {
   LftMtr.write(1500);
   RgtMtr.write(1500);
 
-  SvdDelDisp = ((DelRgt + DelLft) / 2) + sqrt((XPstn * XPstn) + (YPstn * YPstn));
-  Serial.print("Saved Disp: ");
-  Serial.println(SvdDelDisp);
-  while ((((DelRgt) + (DelLft)) / 2) < SvdDelDisp) { //Check
+  savedLftEncdrReturn = abs(LftEncdr.getRawPosition());
+  //savedRgtEncdrReturn = abs(RgtEncdr.getRawPosition());
+  while (abs(savedLftEncdrReturn) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
+    Serial.println("Moving towards pickup position... ");
+    WriteForwardSpeed(1700);
+    Position();
+  }
+  /*
+    SvdDelDisp = ((DelRgt + DelLft) / 2) + sqrt((XPstn * XPstn) + (YPstn * YPstn));
+    Serial.print("Saved Disp: ");
+    Serial.println(SvdDelDisp);
+    while ((((DelRgt) + (DelLft)) / 2) < SvdDelDisp) { //Check
     Serial.println("Moving towards pickup position... ");
     Serial.println(((((DelRgt) + (DelLft)) / 2) < SvdDelDisp));
     WriteForwardSpeed(1700);
     Position();
-  }
-
+    }
+  */
   LftMtr.write(1500);
   RgtMtr.write(1500);
 
