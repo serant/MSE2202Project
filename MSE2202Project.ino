@@ -27,13 +27,13 @@ unsigned tempEncoderPosition = 0;
 //#define DEBUG_ENCODERS
 //#define DEBUG_TRACKING
 //#define DEBUG_PID
-
 //Flags/Switches
 bool StartLooking = true;
 bool EnableIncrement = true;
 bool TurnRight = true;
 bool StartTracking = false;
 bool startTask = true;
+bool start = true;
 int AnyUse;
 unsigned pickedUp;
 bool Start = true;
@@ -45,7 +45,7 @@ bool Start = true;
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
 int currentHallRead;
 int lastHallRead;
-unsigned HallThreshold;
+unsigned HallThreshold = 6;
 
 //Mechanical Information
 unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
@@ -167,7 +167,7 @@ void setup() {
 
   pinMode(GripPin, OUTPUT);
   Grip.attach(GripPin);
-  Grip.write(100);
+  Grip.write(110);
 
   pinMode(WristPin, OUTPUT);
   Wrist.attach(WristPin);
@@ -181,10 +181,12 @@ void setup() {
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
 
   pinMode(ArmBasePin, OUTPUT);
-  ArmBase.attach(ArmBasePin);// 37 folded, 180 out
+  ArmBase.attach(ArmBasePin);
+  ArmBase.write(40);
 
   pinMode(ArmBendPin, OUTPUT);
-  ArmBend.attach(ArmBendPin);//180 folded, 0 out
+  ArmBend.attach(ArmBendPin);
+  ArmBend.write(150);
 
   pinMode(7, INPUT);
 
@@ -232,8 +234,25 @@ void loop() {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ 
     Serial.println("Main Loop: In Mode 0");
 
-
-      break;
+  if (timer % 30 < 1) {
+    Serial.print("time = ");
+    Serial.println(timer);
+  }
+  if (timer >= 240) {  //4 min time limit
+    // GoHome(0);        **********************************************uncomment this!!!!!!!!!!!
+    ModeIndex = 0;
+  }
+  if (start) {       //only runs this until mode started, 1 sec delay, must reset to change mode
+    if (digitalRead(13)) {   //switch 1 up = stay in 0, down = start mode 1 or 2
+      start = false;
+      timerStart = millis();
+      if (digitalRead(12)) ModeIndex = 2; // switch 3 and 1 on (down)
+      else  ModeIndex = 1; // switch 3 off (up), 1 on (down)
+      delay(1000);
+    }
+    else ModeIndex = 0; // switch 1 off(up), select mode then turn switch 1 on(down) when want to start
+  }
+  if (!(digitalRead(13))) ModeIndex = 0;
 
     case 1: /**********************************mode 1 base = look */ 
       Serial.println("Main Loop: In mode 1");
@@ -280,60 +299,102 @@ void loop() {
       WriteForwardSpeed(1700);
       break;
 
-    /*case 2:  /********************mode 2 base = check    Serial.println("In mode 2");
-      //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+    case 2:  /********************mode 2 base = check   */ Serial.println("In mode 2");
+        //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+        // Robo --> back and forth scanning motion
+        lastHallRead = analogRead(HallGrip);
+        lftEncoderCounter = LftEncdr.getRawPosition();
+        rgtEncoderCounter = RgtEncdr.getRawPosition();
 
-      // Robo --> back and forth scanning motion
-      lastHallRead = analogRead(HallGrip);
-      lftEncoderCounter = LftEncdr.getRawPosition();
-      rgtEncoderCounter = RgtEncdr.getRawPosition();
+        ArmBase.write(90); // 37 - 179 folded to out
+        ArmBend.write(115); // 0 -180 out to folded
+        Grip.write(170); // closed grip
+        Wrist.write(100);
+        delay(1000);
 
-      ArmBase.write(100); // 37 - 179 folded to out
-      ArmBend.write(110); // 0 -180 out to folded
+        for (int k = 0; k < 3; k++) {
+          Ping(UltrasonicPing);
+          Serial.print("Initial pings \n");
+          Serial.println(UltrasonicDistance);
+          delay(50);
+        }
 
-      LftMtr.writeMicroseconds(1650);
-      for (lftEncoderCounter; lftEncoderCounter < 40; lftEncoderCounter++) {
-        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-        Serial.print("Left Encoder Forward: ");
+        Ping(UltrasonicPing);
+        Serial.println(UltrasonicDistance);
+        while (UltrasonicDistance > 22 || UltrasonicDistance <= 18) { // distance to wall = 21
+          Serial.print(" Not close enough, approaching... \n");
+          LftMtr.writeMicroseconds(1640);
+          RgtMtr.writeMicroseconds(1600);
+          Ping(UltrasonicPing);
+          Serial.println(UltrasonicDistance);
+          delay(50);
+        }
+        delay(1000);
+        LftMtr.writeMicroseconds(1500);
+        RgtMtr.writeMicroseconds(1500);
+        LftEncdr.zero();
+        RgtEncdr.zero();
         Serial.println(lftEncoderCounter);
-        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
-          Move();
-        }
-      }
-      LftMtr.writeMicroseconds(1500);
-      for (lftEncoderCounter; lftEncoderCounter > 0; lftEncoderCounter--) {
-        currentHallRead = analogRead(HallGrip);
-        Serial.print("Left Encoder Backward: ");
-        Serial.println(lftEncoderCounter);
-        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
-          Move();
-        }
-      }
-      LftMtr.writeMicroseconds(1500);
-      delay(200);
-
-      RgtMtr.writeMicroseconds(1650);
-      for (rgtEncoderCounter; rgtEncoderCounter < 40; rgtEncoderCounter++) {
-        currentHallRead = analogRead(HallGrip);
-        Serial.print("Right Encoder Forward: ");
         Serial.println(rgtEncoderCounter);
-        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
-          Move();
+        
+        for (; lftEncoderCounter < 10; lftEncoderCounter++) {
+          LftMtr.writeMicroseconds(1625);
+          delay(100);
+          LftMtr.writeMicroseconds(1500);
+          delay(100);
+          currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+          Serial.print("Left Encoder Forward: ");
+          Serial.println(lftEncoderCounter);
+          if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+            Move();
+          }
         }
-      }
-      RgtMtr.writeMicroseconds(1500);
-      for (rgtEncoderCounter; rgtEncoderCounter > 0; rgtEncoderCounter--) {
-        currentHallRead = analogRead(HallGrip);
-        Serial.print("Right Encoder Backward: ");
-        Serial.println(rgtEncoderCounter);
-        if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
-          Move();
-        }
-      }
-      RgtMtr.writeMicroseconds(1500);
-      delay(200);
+        delay(300);
 
-      break;*/
+        for (; lftEncoderCounter > 0; lftEncoderCounter--) {
+          LftMtr.writeMicroseconds(1375);
+          delay(100);
+          LftMtr.writeMicroseconds(1500);
+          delay(100);
+          currentHallRead = analogRead(HallGrip);
+          Serial.print("Left Encoder Backward: ");
+          Serial.println(lftEncoderCounter);
+          if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+            Move();
+          }
+        }
+        delay(300);
+
+        RgtMtr.writeMicroseconds(1625);
+        for (; rgtEncoderCounter < 10; rgtEncoderCounter++) {
+          RgtMtr.writeMicroseconds(1640);
+          delay(100);
+          RgtMtr.writeMicroseconds(1500);
+          delay(100);
+          currentHallRead = analogRead(HallGrip);
+          Serial.print("Right Encoder Forward: ");
+          Serial.println(rgtEncoderCounter);
+          if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+            Move();
+          }
+        }
+        delay(300);
+
+        for (; rgtEncoderCounter > 0; rgtEncoderCounter--) {
+          RgtMtr.writeMicroseconds(1375);
+          delay(100);
+          RgtMtr.writeMicroseconds(1500);
+          delay(100);
+          currentHallRead = analogRead(HallGrip);
+          Serial.print("Right Encoder Backward: ");
+          Serial.println(rgtEncoderCounter);
+          if ((currentHallRead - lastHallRead > 15) || (currentHallRead - lastHallRead < -15)) {
+            Move();
+          }
+        }
+        delay(300);
+
+        break;
 
     case 3:
 
@@ -354,7 +415,6 @@ void loop() {
       //etc. add as needed
   }
 }
-
 void DebuggerModule() {
   //Debugger module -> all debugger code can go here
 
@@ -426,12 +486,10 @@ void Ping(int x) {
   mtrPID.SetMode(AUTOMATIC);
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) * 1.1 / 58);//returns in cm
-  return;
 }
 
 void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
-  return;
 }
 
 //Mode 1
@@ -443,7 +501,6 @@ void TrackPosition() {
     XPos += WheelPerimeter;
     EnableIncrement = false;
   }
-  return;
 }
 
 void PickUp(int i) {  //left = 1, right = 0
@@ -535,7 +592,6 @@ void Position() {
 
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-
   Position();
   for (int i = 0; i > 0; i++) {
     SvdDsp = DelDsp;
@@ -583,7 +639,6 @@ void GoHome() {
 
   LftMtr.write(1500);
   RgtMtr.write(1500);
-  Return();
 }
 
 void Return() {
@@ -764,38 +819,47 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   delay(400);
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
+  delay(1000);
 
-  RgtMtr.writeMicroseconds(1650);// turn right towards overhang
-  LftMtr.writeMicroseconds(1350);
-  delay(200);
+  Grip.write(100); // 50 -110 --> open to closed
+  delay(700);
+  ArmBend.write(115); // extend arm, grip above tesseract
+  ArmBase.write(95);
+  delay(700);
+  Grip.write(170); // close grip
+  delay(1000);
+  Serial.print("Picked up the tesseract! \n");
+
+  ArmBend.write(180);
+  ArmBase.write(40);
+
+  if (lftEncoderCounter != 0) {
+    while (lftEncoderCounter > 0) {
+      LftMtr.writeMicroseconds(1375);
+    }
+    LftMtr.writeMicroseconds(1500);
+  }
+
+  if (rgtEncoderCounter != 0) {
+    while (rgtEncoderCounter > 0) {
+      RgtMtr.writeMicroseconds(1375);
+    }
+    RgtMtr.writeMicroseconds(1500);
+  }
+  AnyUse = (LftEncdr.getRawPosition() + 480);
+  while (LftEncdr.getRawPosition() < AnyUse) {
+    LftMtr.writeMicroseconds(1650);
+  }
+  LftMtr.writeMicroseconds(1500);
+  delay(1000);
+
+  RgtMtr.writeMicroseconds(1650);
+  LftMtr.writeMicroseconds(1650);
+  delay(3000);
   RgtMtr.writeMicroseconds(1500);
   LftMtr.writeMicroseconds(1500);
+  delay(2000);
 
-  for (int i = 1; i <= 19; i++) { //want 18 cm from wall
-    Ping(UltrasonicPingSide);
-    UltrasonicDistance = UltrasonicDistance / 10;
-    AnyUse = 18 - UltrasonicDistance;
-    RgtMtr.writeMicroseconds(1400 + AnyUse);
-    LftMtr.writeMicroseconds(1400 - AnyUse);
-    delay(25);
-    AnyUse = -AnyUse;
-    RgtMtr.writeMicroseconds(1400 + AnyUse);
-    LftMtr.writeMicroseconds(1400 - AnyUse);
-    delay(25);
-  }
-  for (int i = 1; i <= 50; i++) { //want 18 cm from wall
-    Ping(UltrasonicPingSide);
-    if ((!(UltrasonicDistance < 210)) || (UltrasonicDistance = 0)) UltrasonicDistance = 180;
-    UltrasonicDistance = UltrasonicDistance / 10;
-    AnyUse = UltrasonicDistance - 18;
-    RgtMtr.writeMicroseconds(1600 + AnyUse);
-    LftMtr.writeMicroseconds(1600 - AnyUse);
-    delay(25);
-    AnyUse = -AnyUse;
-    RgtMtr.writeMicroseconds(1600 + AnyUse);
-    LftMtr.writeMicroseconds(1600 - AnyUse);
-    delay(25);
-  }
   DropOff();
   return;
 }
