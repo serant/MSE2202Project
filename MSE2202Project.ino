@@ -258,8 +258,8 @@ void loop() {
       Serial.println("Main Loop: In mode 1");
 
       //Looks for Blocks
-      if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) GoHome(); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left -> REPLACE WITH PICKUP 1
-      else if((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) GoHome();// -> REPLACE WITH PICKUP 0
+      if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left -> REPLACE WITH PICKUP 1
+      else if((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0);// -> REPLACE WITH PICKUP 0
 
       //Pings to detect if wall is in front
       Ping(UltrasonicPing);
@@ -274,12 +274,11 @@ void loop() {
           tempEncoderPosition = LftEncdr.getRawPosition();
           while ((LftEncdr.getRawPosition() < tempEncoderPosition + 980)) {
             mtrPID.SetMode(MANUAL);
-            LftMtr.writeMicroseconds(1700);
-            RgtMtr.writeMicroseconds(1500);
+            LftMtr.writeMicroseconds(1800);
+            RgtMtr.writeMicroseconds(1400);
           }
           LftMtr.writeMicroseconds(1500);
           RgtMtr.writeMicroseconds(1500);
-          delay(3000);
           mtrPID.SetMode(AUTOMATIC);
         }
         else {//if turning left...
@@ -287,11 +286,10 @@ void loop() {
           while (RgtEncdr.getRawPosition() < (tempEncoderPosition + 980)) {
             mtrPID.SetMode(MANUAL);
             RgtMtr.writeMicroseconds(1800);
-            LftMtr.writeMicroseconds(1500);
+            LftMtr.writeMicroseconds(1400);
           }
           RgtMtr.writeMicroseconds(1500);
           LftMtr.writeMicroseconds(1500);
-          delay(3000);
           mtrPID.SetMode(AUTOMATIC);
         }
         TurnRight = !TurnRight;
@@ -639,6 +637,8 @@ void GoHome() {
 
   LftMtr.write(1500);
   RgtMtr.write(1500);
+
+  PlaceTesseract();
 }
 
 void Return() {
@@ -769,7 +769,7 @@ void PlaceTesseract() {
   pickedUp++;
   if (pickedUp == 3) ModeIndex = 0;
   else Return();
-  return;
+  
 }
 
 //Mode 2
