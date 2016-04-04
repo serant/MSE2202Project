@@ -1,3 +1,10 @@
+/*
+  Jason - dropoff, pickup
+  Seran  - look
+  Matt - placetesseract, position, gohome, return
+  Eric - check, move
+*/
+
 #include <CharliePlexM.h>
 #include <Servo.h>
 #include <I2CEncoder.h>
@@ -50,7 +57,7 @@ Servo LftMtr;
 Servo ArmBend;    //out -> folded 0->180
 Servo ArmBase;    //folded->out  37-180
 Servo RgtMtr;
-Servo Grip;       //110 closed, 50 open
+Servo Grip;       //170 closed, 100 open
 Servo Wrist;      //0 min folded up, 50 straight out, 180 folded down
 I2CEncoder LftEncdr;
 I2CEncoder RgtEncdr;
@@ -95,7 +102,7 @@ long lftEncoderCounter;
 long rgtEncoderCounter;
 
 // Tracking Variables
-unsigned long CourseWidth = 150; //course width in cm, has to be set prior to running
+unsigned long CourseWidth = 240; //course width in cm, has to be set prior to running
 unsigned long XPos = 0;
 long RawLftPrv = 0;
 long RawRgtPrv = 0;
@@ -133,7 +140,7 @@ void setup() {
 
   pinMode(GripPin, OUTPUT);
   Grip.attach(GripPin);
-  Grip.write(50);
+  Grip.write(100);
 
   pinMode(WristPin, OUTPUT);
   Wrist.attach(WristPin);
@@ -175,7 +182,7 @@ void loop() {
     Serial.println(timer);
   }
   if (timer >= 240) {  //4 min time limit
-    // GoHome(0);        **********************************************uncomment this!!!!!!!!!!!
+    GoHome(1);       // **********************************************uncomment this!!!!!!!!!!!
     ModeIndex = 0;
   }
   if (Start) {       //only runs this until mode started, 1 sec delay, must reset to change mode
@@ -191,17 +198,9 @@ void loop() {
   if (!(digitalRead(13))) ModeIndex = 0;
 
   switch (ModeIndex) {
-    case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ Serial.println("In Mode 0");
-      Grip.write(90);
-      ArmBase.write(55);
-      ArmBend.write(150);
-      delay(1000);
-      PickUp(0);
-      if (1) {
-        Serial.println("1 works in ifs");
-      }
-      Serial.println("done");
-      delay(2000);
+    case 0 : /***********sitting around waiting, use this mode to test stuff, then clear*/ Serial.println("In Mode 0");
+      PickUp(1);
+      delay(5000);
       break;
 
     case 1: /**********************************mode 1 base = look */ Serial.println("In mode 1");
@@ -209,7 +208,7 @@ void loop() {
       if (!(timer % 3)) Ping(UltrasonicPing);
       Serial.print("d =   ");
       Serial.println(UltrasonicDistance);
-      if ((UltrasonicDistance >  18) && (UltrasonicDistance != 0)) {
+      if ((UltrasonicDistance < 18) && (UltrasonicDistance != 0)) {
         if ((analogRead(HallLft) - NOFIELDLFT > 6) || (analogRead(HallLft) - NOFIELDLFT < -6) || (analogRead(HallRgt) - NOFIELDRGT > 6) || (analogRead(HallRgt) - NOFIELDRGT < -6)) {
           Serial.println("moving");
           RgtMtr.writeMicroseconds(ForwardSpeed);
@@ -219,12 +218,7 @@ void loop() {
           Serial.println("detected tesserract******************");
           LftMtr.writeMicroseconds(Stop);
           RgtMtr.writeMicroseconds(Stop);
-          /*
-            PickUp();
-            GoHome(1);
-            PlaceTesseract();
-            Return();
-          */
+          PickUp();
         }
       }
       else { //if reaches end of course width, turn right then left
@@ -260,15 +254,12 @@ void loop() {
 
     case 2:  /********************mode 2 base = check   */ Serial.println("In mode 2");
       //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
-
       // Robo --> back and forth scanning motion
       lastHallRead = analogRead(HallGrip);
       lftEncoderCounter = LftEncdr.getRawPosition();
       rgtEncoderCounter = RgtEncdr.getRawPosition();
-
       ArmBase.write(100); // 37 - 179 folded to out
       ArmBend.write(110); // 0 -180 out to folded
-
       LftMtr.writeMicroseconds(1650);
       for (lftEncoderCounter; lftEncoderCounter < 40; lftEncoderCounter++) {
         currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
@@ -289,7 +280,6 @@ void loop() {
       }
       LftMtr.writeMicroseconds(1500);
       delay(200);
-
       RgtMtr.writeMicroseconds(1650);
       for (rgtEncoderCounter; rgtEncoderCounter < 40; rgtEncoderCounter++) {
         currentHallRead = analogRead(HallGrip);
@@ -357,10 +347,12 @@ void Ping(int x) {
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
   digitalWrite(x, LOW); //turns off the signal
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) * 1.1 / 58);//returns in cm
+  return;
 }
 
 void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
+  return;
 }
 
 //Mode 1
@@ -372,57 +364,67 @@ void TrackPosition() {
     XPos += WheelPerimeter;
     EnableIncrement = false;
   }
+  return;
 }
 
 void PickUp(int i) {  //left = 1, right = 0
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
   Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
-  while (((analogRead(HallGrip) - NOFIELDGRIP) < 6)) {
-    if (!i) {
+  switch (i) {
+    case 0:
       LftMtr.writeMicroseconds(1450);
       RgtMtr.writeMicroseconds(1400);
-      delay(500);
+      delay(1000);
       LftMtr.writeMicroseconds(Stop);
       RgtMtr.writeMicroseconds(Stop);
       delay(200);
       LftMtr.writeMicroseconds(1600);
       RgtMtr.writeMicroseconds(1600);
-      delay(300);
+      delay(1000);
       LftMtr.writeMicroseconds(Stop);
       RgtMtr.writeMicroseconds(Stop);
-      i = !i;
-    }
-    delay(500);
-    LftMtr.writeMicroseconds(1350);     //*******back up ~ straight
-    RgtMtr.writeMicroseconds(1350);       ////*******************test
-    delay(1500);
-    LftMtr.writeMicroseconds(Stop);
-    RgtMtr.writeMicroseconds(Stop);
-    Grip.write(50);     //picking up tesseract
-    Wrist.write(48);
-    ArmBend.write(130);
-    delay(1000);
-    ArmBase.write(110);
-    delay(1000);
-    ArmBase.write(125);
-    delay(1000);
-    Grip.write(110);
-    delay(1000);
-    ArmBase.write(90);
-    delay(1000);
-    Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
-    if ((analogRead(HallGrip) - NOFIELDGRIP) < 5) {  //drop tesseract if not magnetic/missed tesseract, first run will drop anyway
-      ArmBend.write(20);
-      delay(1000);
-      Grip.write(50);
+      i = 3;
+      break;
+    case 1:
+      i = 3;
+      break;
+    case 3:
       delay(500);
-      for (int j = 20; j <= 130; j += 5) {
-        ArmBend.write(j);
-        delay(100);
-      }
+      LftMtr.writeMicroseconds(1350);
+      RgtMtr.writeMicroseconds(1350);
+      delay(1500);
+      LftMtr.writeMicroseconds(Stop);
+      RgtMtr.writeMicroseconds(Stop);
+      i = 9;
+  }
+  Grip.write(100);     //picking up tesseract
+  Wrist.write(48);
+  ArmBend.write(130);
+  delay(1000);
+  ArmBase.write(110);
+  delay(1000);
+  ArmBase.write(125);
+  delay(1000);
+  Grip.write(170);
+  delay(1000);
+  ArmBase.write(90);
+  delay(1000);
+  Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
+  if (!((analogRead(HallGrip) - NOFIELDGRIP) > 5 || ((analogRead(HallGrip) - NOFIELDGRIP) < -5))) { //drop tesseract if not magnetic/missed tesseract
+    ArmBend.write(20);
+    delay(1000);
+    Grip.write(100);
+    delay(500);
+    for (int j = 20; j <= 130; j += 5) {
+      ArmBend.write(j);
+      delay(100);
     }
   }
-  return;//good tesseract
+  else {
+    Serial.println("got tesseract");
+    GoHome(0);
+  }
+  return;
 }
 
 void Position() {
@@ -435,14 +437,11 @@ void Position() {
   Dsp = Dsp + DelDsp; //Current Displacement
   Serial.print("Displacement: ");
   Serial.println(Dsp);
-
   dTheta = ((DelRgt - DelLft) / 109) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
   OrTheta = OrTheta + dTheta; //Orientation of robot
   OrTheta = (int)OrTheta % 360; //If the magnitude of the orientation is greater than 360
-
   Serial.print("Orientation Theta: ");
   Serial.println(OrTheta);
-
   dXPstn = DelDsp * cos(OrTheta * PI / 180);
   dYPstn = DelDsp * sin(OrTheta * PI / 180);
   XPstn = XPstn + dXPstn;
@@ -451,17 +450,16 @@ void Position() {
   Serial.print(XPstn);
   Serial.print( "Y: ");//Y coordinates of the robot (up is positive)
   PolTheta = atan(YPstn / XPstn * 180 / PI); //The polar angle of the position of the robot
-
   RawLftPrv = LftEncdr.getRawPosition();
   RawRgtPrv = RgtEncdr.getRawPosition();
   PrvOrTheta = OrTheta;
+  return;
 }
 
 void GoHome(int done) {
   //robot calculates and saves position and returns to base after tesseract picked up,
   Position();
   for (int i = 0; i > 0; i++) {
-
     SvdDsp = Dsp;
   }
   while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta - 5))) {
@@ -472,7 +470,6 @@ void GoHome(int done) {
   }
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
-
   while (Dsp > 10) {
     Serial.println("Moving towards origin...");
     LftMtr.writeMicroseconds(2000);
@@ -481,7 +478,9 @@ void GoHome(int done) {
   }
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
-  if (done == 0) ModeIndex = 0;
+  if (done == 1) ModeIndex = 0;
+  else PlaceTesseract();
+  return;
 }
 
 void Return() {
@@ -510,17 +509,16 @@ void Return() {
     LftMotorSpeed = 1400;
     RgtMotorSpeed = 1600;
   }
-
   else if (((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp < (SvdDsp - DspBuffer)) || Dsp > (SvdDsp + DspBuffer)))
   {
     LftMotorSpeed = MotorSpeed + LeftMotorOffset;
     RgtMotorSpeed = MotorSpeed + RightMotorOffset;
   }
-
   else if (((OrTheta > (FindTheta - ThetaBuffer)) || OrTheta < (FindTheta + ThetaBuffer)) && ((Dsp > (SvdDsp - DspBuffer)) || Dsp < (SvdDsp + DspBuffer)))
   {
     //switch control signal to go back to Look();
   }
+  return;
 }
 
 void PlaceTesseract() {
@@ -543,7 +541,6 @@ void PlaceTesseract() {
       ArmBend.write(0);
       ArmBase.write(0);
       Wrist.write(70);//70-180, bent-straightout
-
       if (OrTheta < 200) {
         RgtMotorSpeed = 1600;
         LftMotorSpeed = 1400;
@@ -552,7 +549,6 @@ void PlaceTesseract() {
         StepIndex = 2;
       }
       break;
-
     case 2:
       RgtMotorSpeed = 1600;
       LftMotorSpeed = 1400;
@@ -563,7 +559,6 @@ void PlaceTesseract() {
           StepIndex = 3;
         }
       }
-
       else if ((GripLightData > GripLightDark) && (HitBlack)) {
         HitBlack = false;
       }
@@ -575,13 +570,15 @@ void PlaceTesseract() {
       ArmBend.write(0);
       ArmBase.write(0);
       Wrist.write(70);
-      Grip.write(50);
+      Grip.write(100);
       HitBlackCount = 0;
       HitBlackTarget--;
       break;
   }
   pickedUp++;
   if (pickedUp == 3) ModeIndex = 0;
+  else Return();
+  return;
 }
 
 //Mode 2
@@ -592,7 +589,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
 
-  Grip.write(50); // open grip
+  Grip.write(100); // open grip
   ArmBend.write(165); // extend arm, grip above tesseract
   ArmBase.write(90);
   Wrist.write(170);
@@ -606,7 +603,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   ArmBase.write(175);//lower claw around tesseract
   ArmBend.write(175);
   Wrist.write(180);
-  Grip.write(110); // close grip
+  Grip.write(170); // close grip
 
   LftMtr.writeMicroseconds(1350);
   RgtMtr.writeMicroseconds(1350);
@@ -646,10 +643,11 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
     delay(25);
   }
   DropOff();
+  return;
 }
 
 void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
-  Grip.write(110);
+  Grip.write(170);
   delay(500);
   ArmBase.write(80);
   delay(300);
@@ -668,7 +666,7 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   ArmBend.write(40);
   Wrist.write(35);
   delay(500);
-  Grip.write(50);
+  Grip.write(100);
   for (int i = 85; i >= 55; i -= 5) {
     ArmBase.write(i);
     delay(100);
@@ -685,4 +683,5 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   LftMtr.writeMicroseconds (1500);
   RgtMtr.writeMicroseconds(1500);
   pickedUp++;
+  return;
 }
