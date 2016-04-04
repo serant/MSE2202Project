@@ -211,10 +211,20 @@ void loop() {
     // Serial.println(Line);
     // Serial.print("Block: ");
     // Serial.println(BlockNumber);
-    //Ping(2);
-    //Serial.println(UltrasonicDistance);
+    Ping(2);
+    Serial.println(UltrasonicDistance);
+    while (UltrasonicDistance < 20 && UltrasonicDistance != 0) {
+      LftMtr.write (1350);
+      RgtMtr.write (1350);
+      Ping(2);
+    }
+    while (UltrasonicDistance > 22 && UltrasonicDistance != 0) {
+      LftMtr.write (1650);
+      RgtMtr.write (1650);
+      Ping(2);
+    }
 
-    if ((analogRead(GripLight) <= 900) || (analogRead(GripLight) >= 970)) { // Light
+    if ((analogRead(GripLight) <= 900) || (analogRead(GripLight) >= 980)) { // Light
       Serial.println("Turning...");
       LftMtr.write (1350);
       RgtMtr.write (1650);
@@ -223,7 +233,7 @@ void loop() {
       RgtMtr.write (1500);
       delay(50);
       Black = false;
-    } else if ((900 < analogRead(GripLight)) && (analogRead(GripLight) < 970) && Black == false) { // Black line
+    } else if ((900 < analogRead(GripLight)) && (analogRead(GripLight) < 980) && Black == false) { // Black line
       Line++;
       Black = true;
       if ((Line == 3 && BlockNumber == 1) || (Line == 2 && BlockNumber == 2) || (Line == 1 && BlockNumber == 3)) {
