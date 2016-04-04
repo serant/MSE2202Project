@@ -1,16 +1,21 @@
-/*
-  Jason - dropoff, pickup
-  Seran  - look
-  Matt - placetesseract, position, gohome, return
-  Eric - check, move
-*/
+//DEBUGGERS -> uncomment to debug
+//#define DEBUG_HALL_SENSOR
+//#define DEBUG_ULTRASONIC
+//#define DEBUG_LINE_TRACKER
+//#define DEBUG_ENCODERS
+//#define DEBUG_TRACKING
+//#define DEBUG_PID
 
 #include <CharliePlexM.h>
 #include <Servo.h>
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-#include "PID_v1.h"
+
+//=======LIBRARIES FOR MSE2202B PROJECT======/
+#include "PinOuts.h"
+#include "PIDVariables.h"
+#include "TrackingVariables.h"
 
 //Testing Variables 
 unsigned long prevTime1 = 0;
@@ -20,13 +25,7 @@ unsigned long timerStart;
 unsigned long timer;
 unsigned tempEncoderPosition = 0;
 
-//DEBUGGERS -> uncomment to debug
-//#define DEBUG_HALL_SENSOR
-//#define DEBUG_ULTRASONIC
-//#define DEBUG_LINE_TRACKER
-//#define DEBUG_ENCODERS
-//#define DEBUG_TRACKING
-//#define DEBUG_PID
+
 //Flags/Switches
 bool StartLooking = true;
 bool EnableIncrement = true;
@@ -79,32 +78,10 @@ I2CEncoder ArmBendEncdr;
 
 //Mode Selector Variables
 unsigned int ModeIndex = 4;
-unsigned int ModeIndicator[6] = {
-  0x00, //Default Mode (Mode 0)
-  0x00FF, //Mode 1
-  0x0F0F, //Mode 2
-  0x3333, //Calibrate Line Tracker to Dark
-  0xAAAA, //Calibrate Motors (might not need)
-  0xFFFF
-};
+
 
 //pins FINALIZED DO NOT CHANGE THIS///////////////////
-const int LftMtrPin = 5;
-const int RgtMtrPin = 4;
-const int ArmBasePin = 6;
-const int ArmBendPin = 7;
-const int WristPin = 11;//********
-const int GripPin = 10;//********
-const int HallRgt = A0;
-const int HallLft = A1;
-const int GripLight = A2;
-const int HallGrip = A3;//************
-const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this
-const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
-const int UltrasonicPing = 2;//data return in 3
-//ULTRASONIC DATA RETURN ON D3
-const int UltrasonicPingSide = 8;//data return in 9
-//ULTRASONIC SIDE DATA RETURN ON D9
+
 
 int MovFst = 2200;
 
@@ -118,37 +95,6 @@ unsigned long LeftMotorOffset;
 unsigned long RightMotorOffset;
 long lftEncoderCounter;
 long rgtEncoderCounter;
-
-//PID Control
-double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
-double Kp = 11.9, Ki = 100, Kd = 0.00001; //PID parameters
-unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
-PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
-
-// Tracking Variables
-unsigned long CourseWidth = 240; //course width in cm, has to be set prior to running
-unsigned long XPos = 0;
-long RawLftPrv = 0;
-long RawRgtPrv = 0;
-const double CE = 637;//pulses per revolution
-const double CF = ((3.14159 * 69.85) / CE); //Conversion factor, traslates encoder pulses to linear displacement
-double DelLft = 0;
-double DelRgt = 0;
-double DelDsp = 0;
-long TotalDsp = 0;
-double SvdDsp = 0;
-double Dsp = 0;
-double OrTheta = 0;
-double PolTheta = 0;
-double FindTheta = 0;
-double PickUpTheta = 0;
-double XPstn = 1;
-double YPstn = 0;
-double SvdDelDisp = 0;
-unsigned targetTheta = 0; //used for reorienting robot
-double savedLftEncdr = 0;
-double LftEncdrCount = 0;
-double savedLftEncdrReturn = 0;
 
 
 int StepIndex;
