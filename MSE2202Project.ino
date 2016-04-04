@@ -875,6 +875,9 @@ void MotorAccelerate(unsigned uSSpd) {
   for (int accStps = 10; accStps >= 1; accStps--) { //steps to accelerate robot
     mtrPID.SetSampleTime(10);//change this value if the robot moves off track at the beginning
     accSpd = constrain((1500 + ((uSSpd - 1500) / accStps)), 1500, 2100); //left speed increases from 1500ms to target speed
+    mtrPID.SetMode(MANUAL);
+    delayMicroseconds(20);
+    mtrPID.SetMode(AUTOMATIC);
     PIDSpeed(accSpd);//sends the current speed for PID control to right motor
   }
   mtrPID.SetSampleTime(10);//sets sampling time for PID control
