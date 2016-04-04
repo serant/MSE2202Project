@@ -3,13 +3,31 @@
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-#include <PID_v1.h>
-#include "pins.h"
+#include "PID_v1.h"
+
 //Testing Variables
 unsigned long prevTime1 = 0;
 unsigned long prevTime2 = 0;
 unsigned long testTime = 0;
 unsigned tempEncoderPosition = 0;
+
+//pins
+const int LftMtrPin = 5;
+const int RgtMtrPin = 4;
+const int ArmBasePin = 6;
+const int ArmBendPin = 7;
+const int WristPin = 11;
+const int GripPin = 10;
+const int HallRgt = A0;
+const int HallLft = A1;
+const int GripLight = A2;
+const int HallGrip = A3;
+const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this
+const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
+const int UltrasonicPing = 2;//data return in 3
+const int UltrasonicPingSide = 8;//data return in 9
+//ULTRASONIC SIDE DATA RETURN ON D9
+
 
 //DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
@@ -18,6 +36,7 @@ unsigned tempEncoderPosition = 0;
 //#define DEBUG_ENCODERS
 //#define DEBUG_TRACKING
 //#define DEBUG_PID
+
 
 //Flags/Switches
 bool StartLooking = true;
@@ -57,8 +76,10 @@ int HitBlackTarget = 3;
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
-unsigned long timer = 0;
-unsigned long timerStart = 0;
+unsigned int timer;
+unsigned long timerStart;
+unsigned timeRun = 5;
+
 
 Servo LftMtr;
 Servo ArmBend;    //out -> folded 0->180
@@ -191,8 +212,8 @@ void setup() {
 void loop() {
   //***************************stuff running through every time
   DebuggerModule();
+  Position();
 
-  // Position();
   timer = millis() / 1000; //time in seconds
 
   if (timer % 30 < 1) {
@@ -218,7 +239,6 @@ void loop() {
 
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/
-    WriteForwardSpeed(1700);
 
 
       break;
@@ -226,44 +246,60 @@ void loop() {
     case 1: /**********************************mode 1 base = look */
 
       //Looks for Blocks
-      if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left -> REPLACE WITH PICKUP 1
-      else if ((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0); // -> REPLACE WITH PICKUP 0
+      if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) {//if tesseract is at left hall sensor, call pickup and pass 1 to indicate left
+        PickUp(1);
+      }
+      else if ((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) {
+        PickUp(0);
+      }
 
-      if ((millis() - (timerStart*1000)) > 250) {
+      if ((millis() - timerStart) > timeRun) {
+        LftMtr.writeMicroseconds(1500);
+        RgtMtr.writeMicroseconds(1500);
+        mtrPID.SetMode(MANUAL);
+        delay(500);
+        mtrPID.SetMode(AUTOMATIC);
         Ping(UltrasonicPing);
+        if (UltrasonicDistance < 300 && UltrasonicDistance != 0) timeRun = 4000;
+        if (UltrasonicDistance < 80 && UltrasonicDistance != 0) timeRun = 1500;
+        if (UltrasonicDistance < 50 && UltrasonicDistance != 0) timeRun = 500;
 
+        if (UltrasonicDistance < 25 && UltrasonicDistance > 2) {
 
-        if (UltrasonicDistance < 20 && UltrasonicDistance > 2) {
           RgtMtr.writeMicroseconds(Stop);//stops to prepare for turn
           LftMtr.writeMicroseconds(Stop);
           delay(100);
           if (TurnRight) {//if turning right...
             tempEncoderPosition = LftEncdr.getRawPosition();
-            while ((LftEncdr.getRawPosition() < tempEncoderPosition + 980)) {
-              LftMtr.writeMicroseconds(ForwardSpeed);
-              // RgtMtr.writeMicroseconds(1400);
+            while ((LftEncdr.getRawPosition() < tempEncoderPosition + 960)) {
+              LftMtr.writeMicroseconds(1700);
+
             }
             LftMtr.writeMicroseconds(1500);
             RgtMtr.writeMicroseconds(1500);
           }
           else {//if turning left...
             tempEncoderPosition = RgtEncdr.getRawPosition();
-            while (RgtEncdr.getRawPosition() < (tempEncoderPosition + 980)) {
-              RgtMtr.writeMicroseconds(ForwardSpeed);
-              // LftMtr.writeMicroseconds(1400);
+            while (RgtEncdr.getRawPosition() < (tempEncoderPosition + 960)) {
+              RgtMtr.writeMicroseconds(1700);
+
             }
             RgtMtr.writeMicroseconds(1500);
             LftMtr.writeMicroseconds(1500);
           }
+          TurnRight = !TurnRight;
+          timeRun = 5;
         }
-        timerStart = millis() / 1000;
+        timerStart = millis();
       }
       else {
         WriteForwardSpeed(1700);
       }
+
       break;
 
-    case 2:  /********************mode 2 base = check   */ Serial.println("Main Loop: In mode 2");
+    case 2:  /********************mode 2 base = check   */ Serial.println("In mode 2");
+
       //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
       // Robo --> back and forth scanning motion
       lastHallRead = analogRead(HallGrip);
@@ -275,6 +311,7 @@ void loop() {
       Grip.write(170); // closed grip
       Wrist.write(100);
       delay(1000);
+
 
       for (int k = 0; k < 3; k++) {
         Ping(UltrasonicPing);
@@ -356,8 +393,6 @@ void loop() {
           Move();
         }
       }
-      delay(300);
-
       break;
   }
 }
@@ -392,7 +427,6 @@ void TrackPosition() {
 
 void PickUp(int i) {  //left = 1, right = 0
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
-  Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
   switch (i) {
     case 0:
       LftMtr.writeMicroseconds(1450);
@@ -445,6 +479,11 @@ void PickUp(int i) {  //left = 1, right = 0
   }
   else {
     Serial.println("got tesseract");
+    LftMtr.writeMicroseconds(1650);
+    RgtMtr.writeMicroseconds(1650);
+    delay(1500);
+    LftMtr.writeMicroseconds(Stop);
+    RgtMtr.writeMicroseconds(Stop);
     GoHome();
   }
   return;
