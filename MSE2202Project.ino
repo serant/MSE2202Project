@@ -254,33 +254,8 @@ void loop() {
   }
   if (!(digitalRead(13))) ModeIndex = 0;
 
-<<<<<<< HEAD
-  switch (ModeIndex) {
-    case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/ Serial.println("In Mode 0");
-      /*  for(int i = 0; i < 180; i++){
-          Wrist.write(i);
-        }
-        for(int j = 180; j < 0; j++){
-          Wrist.write(j);
-        } */
-      ArmBase.write(90); // 37 - 179 folded to out
-      ArmBend.write(115); // 0 -180 out to folded
-      Grip.write(170); // closed grip
-      Wrist.write(100);
-      delay(5000);
-
-      Grip.write(100); // 50 -110 --> open to closed
-      delay(700);
-      ArmBase.write(100);
-      ArmBend.write(115);
-      Wrist.write(90);
-      delay(700);
-      Grip.write(170); // close grip
-      delay(1000);
-=======
     case 1: /**********************************mode 1 base = look */ 
       Serial.println("Main Loop: In mode 1");
->>>>>>> origin/DropOff
 
       //Looks for Blocks
       if((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) GoHome(); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left -> REPLACE WITH PICKUP 1
