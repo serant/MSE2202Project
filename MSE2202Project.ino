@@ -213,27 +213,26 @@ void loop() {
     // Serial.println(BlockNumber);
     Ping(2);
     Serial.println(UltrasonicDistance);
-    while (UltrasonicDistance < 20 && UltrasonicDistance != 0) {
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
       LftMtr.write (1350);
       RgtMtr.write (1350);
       Ping(2);
     }
-    while (UltrasonicDistance > 22 && UltrasonicDistance != 0) {
+    while (UltrasonicDistance > 23 && UltrasonicDistance != 0) {
       LftMtr.write (1650);
       RgtMtr.write (1650);
       Ping(2);
     }
-
-    if ((analogRead(GripLight) <= 900) || (analogRead(GripLight) >= 980)) { // Light
+    if ((analogRead(GripLight) <= 920) || (analogRead(GripLight) >= 990)) { // Light
       Serial.println("Turning...");
-      LftMtr.write (1350);
-      RgtMtr.write (1650);
+      LftMtr.write (1650);
+      RgtMtr.write (1350);
       delay(50);
       LftMtr.write (1500);
       RgtMtr.write (1500);
       delay(50);
       Black = false;
-    } else if ((900 < analogRead(GripLight)) && (analogRead(GripLight) < 980) && Black == false) { // Black line
+    } else if ((920 < analogRead(GripLight)) && (analogRead(GripLight) < 990) && Black == false) { // Black line
       Line++;
       Black = true;
       if ((Line == 3 && BlockNumber == 1) || (Line == 2 && BlockNumber == 2) || (Line == 1 && BlockNumber == 3)) {
@@ -241,8 +240,8 @@ void loop() {
         break;
       } else {
         Black = false;
-        LftMtr.write (1375);
-        RgtMtr.write (1625);
+        LftMtr.write (1650);
+        RgtMtr.write (1350);
         delay(50);
         LftMtr.write (1500);
         RgtMtr.write (1500);
@@ -250,14 +249,13 @@ void loop() {
       }
     }
   }
-  // 21
   LftMtr.write (1500);
   RgtMtr.write (1500);
   Serial.println("Opening Claw...");
   Grip.write(105);
   delay(500);
-  // ArmBase.write(80);
-  // delay(500);
+  ArmBase.write(80);
+  delay(500);
   // Return Function
 }
 
@@ -525,63 +523,89 @@ void Return() {
 
 void PlaceTesseract() {
   /*
-    1. extend arm into scan mode
-    2. orient robot to be at 200 degree orientation
-    3. rotate counter clockwise until black hits 3 lines
-    4. place block, retract, return
-    5. update counter
-    6. next time count 2 black lines
-    7. place block, retract, return
-    8. update counter
-    9. next time ocunt 1 black line
-    10. place block, retract return
+    // Allign with wall
+    while (!((OrTheta > -275) && (OrTheta < -265))) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
+    Serial.println(OrTheta);
+    Position();
+    }
+
+    // Move towards wall
+    Ping(2);
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
+    LftMtr.write(1300);
+    RgtMtr.write(1300);
+    Ping(2);
+    }
+
+    // Turn towards orientation Theta
+    while (!(OrTheta < 5 && OrTheta > -5 )) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
+    Position();
+    }
   */
-  Position();
-  // Base  =90
-  // bend 110
-  // grip = 180 closed
-  // grip open = 10
-  // wrist = 60
-
-  while (!(OrTheta < 5 && OrTheta > -5)) { // Turn towards orientation theta
-    LftMtr.write(1650);
-    RgtMtr.write(1350);
-  }
-
-  ArmBend.write(115); // Set up arm
-  ArmBase.write(95);
-  Wrist.write(60);
-  Line = 0; // Zero the line counter
-
-  BlockNumber = 1; // Need to track block number
-  // Light wall 0 - 500
-  // Black stripe 800 - 900
-  // Nothing 900+
+  // Set up arm
+  ArmBend.write(115);
+  ArmBase.write(100);
+  Wrist.write(80);
+  Grip.write(160);
+  Line = 0;
+  delay(1000);
 
   while (true) {
-    if ((analogRead(GripLight) < 800)) { // Light wall
-      Serial.println("Turning...");
-      LftMtr.write (1350); // May need to edit speeds
+    Serial.println(analogRead(GripLight));
+    // Serial.print("Line: ");
+    // Serial.println(Line);
+    // Serial.print("Block: ");
+    // Serial.println(BlockNumber);
+    Ping(2);
+    Serial.println(UltrasonicDistance);
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
+      LftMtr.write (1350);
+      RgtMtr.write (1350);
+      Ping(2);
+    }
+    while (UltrasonicDistance > 23 && UltrasonicDistance != 0) {
+      LftMtr.write (1650);
       RgtMtr.write (1650);
-    } else if ((801 < analogRead(GripLight)) && (analogRead(GripLight) < 850)) { // Black line
+      Ping(2);
+    }
+    if ((analogRead(GripLight) <= 920) || (analogRead(GripLight) >= 990)) { // Light
+      Serial.println("Turning...");
+      LftMtr.write (1650);
+      RgtMtr.write (1350);
+      delay(50);
+      LftMtr.write (1500);
+      RgtMtr.write (1500);
+      delay(50);
+      Black = false;
+    } else if ((920 < analogRead(GripLight)) && (analogRead(GripLight) < 990) && Black == false) { // Black line
       Line++;
+      Black = true;
       if ((Line == 3 && BlockNumber == 1) || (Line == 2 && BlockNumber == 2) || (Line == 1 && BlockNumber == 3)) {
-        break; // Correct block and line number
+        BlockNumber++;
+        break;
       } else {
-        LftMtr.write (1400);
-        RgtMtr.write (1600);
-        delay(500); // Change ticket
+        Black = false;
+        LftMtr.write (1650);
+        RgtMtr.write (1350);
+        delay(50);
+        LftMtr.write (1500);
+        RgtMtr.write (1500);
+        delay(50);
       }
     }
   }
-  LftMtr.write (1500); // Stop moving block
+  LftMtr.write (1500);
   RgtMtr.write (1500);
-  delay(500);
   Serial.println("Opening Claw...");
-  Grip.write(100);
-  delay(1000);
-  ArmBase.write(170);
-  BlockNumber ++;
+  Grip.write(105);
+  delay(500);
+  ArmBase.write(80);
+  delay(500);
+  // Return Function
 }
 
 //Mode 2
