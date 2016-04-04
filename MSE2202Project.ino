@@ -52,7 +52,7 @@ bool Start = true;
 //Hall Sensor Stuff
 #define NOFIELDGRIP 510L
 #define NOFIELDRGT 502L
-#define NOFIELDLFT 220L
+#define NOFIELDLFT 513L
 #define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
 int currentHallRead;
 int lastHallRead;
@@ -240,8 +240,6 @@ void loop() {
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/
 
-      delay(5000);
-      PickUp(1);
 
 
       break;
@@ -740,9 +738,11 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
     Ping(UltrasonicPing);
     LftMtr.writeMicroseconds(1650);
     RgtMtr.writeMicroseconds(1650);
+    delay(100);
+    LftMtr.writeMicroseconds(1500);
+    RgtMtr.writeMicroseconds(1500);
+    delay(100);
   }
-  LftMtr.writeMicroseconds(1500);
-  RgtMtr.writeMicroseconds(1500);
 
   Grip.write(90); // open grip
   ArmBend.write(165); // extend arm, grip above tesseract
@@ -750,16 +750,11 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   Wrist.write(170);
   delay(300);
 
-  while (analogRead(GripLight) < 950) { // 950 --> light, over 1000 --> dark
-    LftMtr.writeMicroseconds(1425);
-  }
-  LftMtr.writeMicroseconds(1500);
-
   ArmBase.write(175);//lower claw around tesseract
   ArmBend.write(175);
   Wrist.write(180);
-
   Grip.write(170); // close grip
+  Serial.println("Picked up the tesseract!");
 
   LftMtr.writeMicroseconds(1350);
   RgtMtr.writeMicroseconds(1350);
@@ -767,15 +762,6 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
   delay(1000);
-
-  Grip.write(100); // 50 -110 --> open to closed
-  delay(700);
-  ArmBend.write(115); // extend arm, grip above tesseract
-  ArmBase.write(95);
-  delay(700);
-  Grip.write(170); // close grip
-  delay(1000);
-  Serial.print("Picked up the tesseract! \n");
 
   ArmBend.write(180);
   ArmBase.write(40);
@@ -799,54 +785,67 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   }
   LftMtr.writeMicroseconds(1500);
   delay(1000);
-
-  RgtMtr.writeMicroseconds(1650);
-  LftMtr.writeMicroseconds(1650);
-  delay(3000);
-  RgtMtr.writeMicroseconds(1500);
+  Wrist.write(120);
+  delay(1000);
+  LftEncdr.zero();
+  while (LftEncdr.getRawPosition() < 1700) {
+    WriteForwardSpeed(1700);
+  }
   LftMtr.writeMicroseconds(1500);
-  delay(2000);
-
+  RgtMtr.writeMicroseconds(1500);
+  delay(1000);
   DropOff();
   return;
 }
 void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
   Grip.write(170);
   delay(500);
-  ArmBase.write(80);
+  ArmBase.write(90);
   delay(300);
-  ArmBend.write(50);
-  Wrist.write(18);
-  delay(1000);
-  while (analogRead(2) > 950) { // over 1000 --> light, less than 500 -->dark
+  ArmBend.write(40);
+  Wrist.write(30);
+  delay(3000);
+  while (analogRead(2) > 800) { // over 1000 --> light, less than 500 -->dark
     LftMtr.writeMicroseconds(1340);
-    RgtMtr.writeMicroseconds(1370);
+    RgtMtr.writeMicroseconds(1340);
   }
-  delay(200);
+  delay(300);
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
   delay(500);
-  ArmBase.write(85);
-  ArmBend.write(40);
-  Wrist.write(35);
+  Wrist.write(40);
   delay(500);
   Grip.write(100);
-  for (int i = 85; i >= 55; i -= 5) {
-    ArmBase.write(i);
-    delay(100);
-    ArmBend.write(115 - i);
-  }
-  for (int i = 80; i < 150; i += 5) {
+  delay(50);
+  Wrist.write(20);
+  for (int i = 80; i <= 150; i += 5) {
     ArmBend.write(i);
     delay(100);
   }
+  LftEncdr.zero();
+  while (LftEncdr.getRawPosition() < 100) {
+    WriteForwardSpeed(1700);
+  }
+  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1500);
+  for (int i = 85; i >= 45; i -= 5) {
+    ArmBase.write(i);
+    delay(100);
+  }
+  Wrist.write(80);
   delay(1000);
   LftMtr.writeMicroseconds(1340);
-  RgtMtr.writeMicroseconds(1370);
+  RgtMtr.writeMicroseconds(1340);
   delay(2000);
   LftMtr.writeMicroseconds (1500);
   RgtMtr.writeMicroseconds(1500);
   pickedUp++;
+  AnyUse = (RgtEncdr.getRawPosition() - 480);
+  while (RgtEncdr.getRawPosition() > AnyUse) {
+    RgtMtr.writeMicroseconds(1350);
+  }
+  RgMtr.writeMicroseconds(1500);
+  delay(1000);
   return;
 }
 
