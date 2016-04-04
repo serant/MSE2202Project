@@ -121,7 +121,7 @@ double dYPstn = 0;
 double ThetaBuffer = 2;
 double DspBuffer = 10;
 int StepIndex = 1;
-
+bool Black = false;
 int BlockNumber = 1;
 int Line = 0;
 
@@ -173,30 +173,30 @@ void loop() {
   //***************************stuff running through every time
   DebuggerModule();
   timer = millis() / 1000; //time in seconds
-  
-  // Allign with wall
-  while (!((OrTheta > -275) && (OrTheta < -265))) {
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
-    Serial.println(OrTheta); 
+  /*
+    // Allign with wall
+    while (!((OrTheta > -275) && (OrTheta < -265))) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
+    Serial.println(OrTheta);
     Position();
-  }
-  
-  // Move towards wall
-  Ping(2);
-  while (UltrasonicDistance < 21) {
-    LftMtr.write(1400);
-    RgtMtr.write(1400);
+    }
+
+    // Move towards wall
     Ping(2);
-  }
-  
-  // Turn towards orientation Theta
-  while (!(OrTheta < 5 && OrTheta > -5 )) {
-    LftMtr.write(1600);
-    RgtMtr.write(1400);
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
+    LftMtr.write(1300);
+    RgtMtr.write(1300);
+    Ping(2);
+    }
+
+    // Turn towards orientation Theta
+    while (!(OrTheta < 5 && OrTheta > -5 )) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
     Position();
-  }
-  
+    }
+  */
   // Set up arm
   ArmBend.write(115);
   ArmBase.write(100);
@@ -206,25 +206,37 @@ void loop() {
   delay(1000);
 
   while (true) {
-    // Serial.println(analogRead(GripLight));
+    Serial.println(analogRead(GripLight));
     // Serial.print("Line: ");
     // Serial.println(Line);
     // Serial.print("Block: ");
     // Serial.println(BlockNumber);
-    Ping(2);
-    Serial.println(UltrasonicDistance);
+    //Ping(2);
+    //Serial.println(UltrasonicDistance);
 
-    if ((analogRead(GripLight) <= 900) || (analogRead(GripLight) >= 1000)) { // Light
+    if ((analogRead(GripLight) <= 900) || (analogRead(GripLight) >= 970)) { // Light
       Serial.println("Turning...");
-      LftMtr.write (1425);
-      RgtMtr.write (1575);
-    } else if ((900 < analogRead(GripLight)) && (analogRead(GripLight) < 1000)) { // Black line
+      LftMtr.write (1350);
+      RgtMtr.write (1650);
+      delay(50);
+      LftMtr.write (1500);
+      RgtMtr.write (1500);
+      delay(50);
+      Black = false;
+    } else if ((900 < analogRead(GripLight)) && (analogRead(GripLight) < 970) && Black == false) { // Black line
       Line++;
+      Black = true;
       if ((Line == 3 && BlockNumber == 1) || (Line == 2 && BlockNumber == 2) || (Line == 1 && BlockNumber == 3)) {
         BlockNumber++;
         break;
       } else {
-        delay(750);
+        Black = false;
+        LftMtr.write (1375);
+        RgtMtr.write (1625);
+        delay(50);
+        LftMtr.write (1500);
+        RgtMtr.write (1500);
+        delay(50);
       }
     }
   }
@@ -407,28 +419,28 @@ void Position() {
   // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
 
   // Distance travelled
-  DelRgt = (CF * ((RgtEncdr.getRawPosition()) - RawRgtPrv)); // Instantaneous Distance traveled by right Wheel
-  DelLft = CF * ((LftEncdr.getRawPosition() - RawLftPrv)); // Instantaneous Distnace traveled by left wheel
+  DelRgt = (CF * ((RgtEncdr.getRawPosition()))); // Instantaneous Distance traveled by right Wheel
+  DelLft = CF * ((LftEncdr.getRawPosition())); // Instantaneous Distnace traveled by left wheel
   DelDsp = (DelRgt + DelLft) / 2; //Instantaneous Distance traveled by the centerpoint of the robot
   Dsp = Dsp + DelDsp; //Current Displacement
-  Serial.print("Displacement: ");
-  Serial.println(Dsp);
+  // Serial.print("Displacement: ");
+  // Serial.println(Dsp);
 
-  dTheta = ((DelRgt - DelLft) / 109) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
-  OrTheta = OrTheta + dTheta; //Orientation of robot
+  OrTheta = ((DelRgt - DelLft) / 109) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
+  //OrTheta = OrTheta + dTheta; //Orientation of robot
   OrTheta = (int)OrTheta % 360; //If the magnitude of the orientation is greater than 360
 
-  Serial.print("Orientation Theta: ");
-  Serial.println(OrTheta);
+  // Serial.print("Orientation Theta: ");
+  // Serial.println(OrTheta);
 
-  dXPstn = DelDsp * cos(OrTheta * PI / 180);
-  dYPstn = DelDsp * sin(OrTheta * PI / 180);
-  XPstn = XPstn + dXPstn;
-  YPstn = YPstn + dYPstn;
-  Serial.print("X: ");//X coordinates of the robot (right is positive)
-  Serial.print(XPstn);
-  Serial.print( "Y: ");//Y coordinates of the robot (up is positive)
-  PolTheta = atan(YPstn / XPstn * 180 / PI); //The polar angle of the position of the robot
+  XPstn = DelDsp * cos(OrTheta * PI / 180);
+  YPstn = DelDsp * sin(OrTheta * PI / 180);
+  //XPstn = XPstn + dXPstn;
+  //YPstn = YPstn + dYPstn;
+  // Serial.print("X: ");//X coordinates of the robot (right is positive)
+  // Serial.print(XPstn);
+  // Serial.print( "Y: ");//Y coordinates of the robot (up is positive)
+  PolTheta = atan(YPstn / XPstn); //The polar angle of the position of the robot
 
   RawLftPrv = LftEncdr.getRawPosition();
   RawRgtPrv = RgtEncdr.getRawPosition();
