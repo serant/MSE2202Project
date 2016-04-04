@@ -16,8 +16,6 @@
 unsigned long prevTime1 = 0;
 unsigned long prevTime2 = 0;
 unsigned long testTime = 0;
-unsigned long timerStart;
-unsigned long timer;
 unsigned tempEncoderPosition = 0;
 
 //DEBUGGERS -> uncomment to debug
@@ -27,6 +25,7 @@ unsigned tempEncoderPosition = 0;
 //#define DEBUG_ENCODERS
 //#define DEBUG_TRACKING
 //#define DEBUG_PID
+
 //Flags/Switches
 bool StartLooking = true;
 bool EnableIncrement = true;
@@ -65,6 +64,8 @@ int HitBlackTarget = 3;
 //Data variables
 unsigned long HallSensorValue = 0;
 unsigned long UltrasonicDistance = 0;
+unsigned int timer;
+unsigned long timerStart;
 
 Servo LftMtr;
 Servo ArmBend;    //out -> folded 0->180
@@ -78,7 +79,7 @@ I2CEncoder ArmBaseEncdr;
 I2CEncoder ArmBendEncdr;
 
 //Mode Selector Variables
-unsigned int ModeIndex = 4;
+unsigned int ModeIndex = 0;
 unsigned int ModeIndicator[6] = {
   0x00, //Default Mode (Mode 0)
   0x00FF, //Mode 1
@@ -88,7 +89,7 @@ unsigned int ModeIndicator[6] = {
   0xFFFF
 };
 
-//pins FINALIZED DO NOT CHANGE THIS///////////////////
+//pins
 const int LftMtrPin = 5;
 const int RgtMtrPin = 4;
 const int ArmBasePin = 6;
@@ -102,7 +103,6 @@ const int HallGrip = A3;//************
 const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this
 const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
 const int UltrasonicPing = 2;//data return in 3
-//ULTRASONIC DATA RETURN ON D3
 const int UltrasonicPingSide = 8;//data return in 9
 //ULTRASONIC SIDE DATA RETURN ON D9
 
@@ -139,18 +139,22 @@ long TotalDsp = 0;
 double SvdDsp = 0;
 double Dsp = 0;
 double OrTheta = 0;
+double PrvOrTheta = 0;
+double dTheta = 0;
 double PolTheta = 0;
 double FindTheta = 0;
 double PickUpTheta = 0;
-double XPstn = 1;
+double XPstn = 0;
+double dXPstn = 0;
 double YPstn = 0;
+bool Black = false;
+int BlockNumber = 1;
+int Line = 0;
 double SvdDelDisp = 0;
 unsigned targetTheta = 0; //used for reorienting robot
 double savedLftEncdr = 0;
 double LftEncdrCount = 0;
 double savedLftEncdrReturn = 0;
-
-
 int StepIndex;
 
 void setup() {
@@ -167,6 +171,7 @@ void setup() {
 
   pinMode(GripPin, OUTPUT);
   Grip.attach(GripPin);
+
   Grip.write(110);
 
   pinMode(WristPin, OUTPUT);
@@ -206,6 +211,7 @@ void setup() {
 void loop() {
   //***************************stuff running through every time
   DebuggerModule();
+
   Position();
   timer = millis() / 1000; //time in seconds
 
@@ -460,6 +466,7 @@ void DebuggerModule() {
   Serial.print(LftMotorPos);
   Serial.print(", R: ");
   Serial.println(RgtMotorPos);
+
 #endif
 
 #ifdef DEBUG_PID
@@ -563,6 +570,7 @@ void PickUp(int i) {  //left = 1, right = 0
 
 void Position() {
   // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
+
   // Distance travelled
   DelRgt = (CF * ((RgtEncdr.getRawPosition()))); // Instantaneous Distance traveled by right Wheel
   DelLft = (CF * ((LftEncdr.getRawPosition()))); // Instantaneous Distnace traveled by left wheel
@@ -714,94 +722,109 @@ void Return() {
 
 void PlaceTesseract() {
   /*
-    1. extend arm into scan mode
-    2. orient robot to be at 200 degree orientation
-    3. rotate counter clockwise until black hits 3 lines
-    4. place block, retract, return
-    5. update counter
-    6. next time count 2 black lines
-    7. place block, retract, return
-    8. update counter
-    9. next time ocunt 1 black line
-    10. place block, retract return
+    // Allign with wall
+    while (!((OrTheta > -275) && (OrTheta < -265))) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
+    Serial.println(OrTheta);
+    Position();
+    }
+
+    // Move towards wall
+    Ping(2);
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
+    LftMtr.write(1300);
+    RgtMtr.write(1300);
+    Ping(2);
+    }
+
+    // Turn towards orientation Theta
+    while (!(OrTheta < 5 && OrTheta > -5 )) {
+    LftMtr.write(1700);
+    RgtMtr.write(1300);
+    Position();
+    }
   */
-  Position();
-  ReadLineTracker();
-  switch (StepIndex) {
-    case 1:
-      ArmBend.write(0);
-      ArmBase.write(0);
-      Wrist.write(70);//70-180, bent-straightout
-      if (OrTheta < 200) {
-        RgtMotorSpeed = 1600;
-        LftMotorSpeed = 1400;
-      }
-      else {
-        StepIndex = 2;
-      }
-      break;
-    case 2:
-      RgtMotorSpeed = 1600;
-      LftMotorSpeed = 1400;
-      if ((GripLightData < GripLightDark) && (!HitBlack)) {
-        HitBlackCount++;
-        HitBlack = true;
-        if (HitBlackCount == HitBlackTarget) {
-          StepIndex = 3;
-        }
-      }
-      else if ((GripLightData > GripLightDark) && (HitBlack)) {
-        HitBlack = false;
-      }
-      break;
+  // Set up arm
+  ArmBend.write(115);
+  ArmBase.write(100);
+  Wrist.write(80);
+  Grip.write(160);
+  Line = 0;
+  delay(1000);
 
-    case 3:
-      LftMotorSpeed = 1500;
-      RgtMotorSpeed = 1500;
-      ArmBend.write(0);
-      ArmBase.write(0);
-      Wrist.write(70);
-      Grip.write(100);
-      HitBlackCount = 0;
-      HitBlackTarget--;
-      break;
+  while (true) {
+    Serial.println(analogRead(GripLight));
+    // Serial.print("Line: ");
+    // Serial.println(Line);
+    // Serial.print("Block: ");
+    // Serial.println(BlockNumber);
+    Ping(2);
+    Serial.println(UltrasonicDistance);
+    while (UltrasonicDistance < 21 && UltrasonicDistance != 0) {
+      LftMtr.write (1350);
+      RgtMtr.write (1350);
+      Ping(2);
+    }
+    while (UltrasonicDistance > 23 && UltrasonicDistance != 0) {
+      LftMtr.write (1650);
+      RgtMtr.write (1650);
+      Ping(2);
+    }
+    if ((analogRead(GripLight) <= 920) || (analogRead(GripLight) >= 990)) { // Light
+      Serial.println("Turning...");
+      LftMtr.write (1650);
+      RgtMtr.write (1350);
+      delay(50);
+      LftMtr.write (1500);
+      RgtMtr.write (1500);
+      delay(50);
+      Black = false;
+    } else if ((920 < analogRead(GripLight)) && (analogRead(GripLight) < 990) && Black == false) { // Black line
+      Line++;
+      Black = true;
+      if ((Line == 3 && BlockNumber == 1) || (Line == 2 && BlockNumber == 2) || (Line == 1 && BlockNumber == 3)) {
+        BlockNumber++;
+        break;
+      } else {
+        Black = false;
+        LftMtr.write (1650);
+        RgtMtr.write (1350);
+        delay(50);
+        LftMtr.write (1500);
+        RgtMtr.write (1500);
+        delay(50);
+      }
+    }
   }
-  pickedUp++;
-  if (pickedUp == 3) ModeIndex = 0;
-  else Return();
-  
+  LftMtr.write (1500);
+  RgtMtr.write (1500);
+  Serial.println("Opening Claw...");
+  Grip.write(105);
+  delay(500);
+  ArmBase.write(80);
+  delay(500);
+  // Return Function
 }
-
-//Mode 2
 
 void Move() {//detected tesseract on wall, pick it up, turn, move under beam, then run DropOff
   //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
-  bool WallDistance = false;
-  int GripCounter;
-  int DriveStraight = false;
-  int FirstValue;
-  int SecondValue;
-  int StraightCount = false;
 
+  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1500);
 
-  while (WallDistance == false) { // approach wall
+  while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {
     Ping(UltrasonicPing);
-    if (UltrasonicDistance > 21) {
-      WriteForwardSpeed(1600);
-      LftMtr.writeMicroseconds(LftMotorSpeed);
-      RgtMtr.writeMicroseconds(RgtMotorSpeed);
-    }
-    if (UltrasonicDistance < 17) {
-      LftMtr.writeMicroseconds(1500);
-      RgtMtr.writeMicroseconds(1500);
-      WallDistance = true;
-    }
+    LftMtr.writeMicroseconds(1650);
+    RgtMtr.writeMicroseconds(1650);
   }
-  // Robot picks up tesseract
+  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1500);
+
   Grip.write(90); // open grip
-  delay(300);
-  ArmBend.write(165); // extend arm
+  ArmBend.write(165); // extend arm, grip above tesseract
   ArmBase.write(165);
+  Wrist.write(170);
   delay(300);
 
   while (analogRead(GripLight) < 950) { // 950 --> light, over 1000 --> dark
@@ -812,6 +835,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   ArmBase.write(175);//lower claw around tesseract
   ArmBend.write(175);
   Wrist.write(180);
+
   Grip.write(170); // close grip
 
   LftMtr.writeMicroseconds(1350);
