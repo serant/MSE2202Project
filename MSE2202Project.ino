@@ -409,7 +409,7 @@ void GoHome() {
     Serial.println("saved values");
   }
 
-  if (!TurnRight) { //Turn number is even
+  if (!TurnRight) { //Turn number is even, right turn == true
     targetTheta = PolTheta;
     while (!(OrTheta < (targetTheta + 185) && OrTheta > (targetTheta + 175))) {
       Serial.println("Alinging Bot, even turn...");
@@ -564,7 +564,6 @@ void PlaceTesseract() {
   ArmBase.write(100);
   delay(500);
   Wrist.write(80);
-  //Grip.write(160);
   Line = 0;
   BlockNumber++;
   delay(500);
@@ -626,7 +625,7 @@ void PlaceTesseract() {
   delay(500);
   Light = false;
   Black = false; 
-  // Return Function
+  Return();
 }
 
 void Move() {//detected tesseract on wall, pick it up, turn, move under beam, then run DropOff
