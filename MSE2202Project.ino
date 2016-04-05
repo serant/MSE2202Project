@@ -465,44 +465,46 @@ void PickUp(int i) {  //left = 1, right = 0
   ArmBase.write(125); //slowly moves arm around tesseract
   delay(1000);
   if (i == 0) {
-    //if tesseract is to 
+    //if tesseract is to the right
     LftMtr.writeMicroseconds(1620); 
-    RgtMtr.writeMicroseconds(1650);
+    RgtMtr.writeMicroseconds(1650);//right motor was damaged so despite pwm pulse, robot will turn to the right
     delay(900);
     LftMtr.writeMicroseconds(Stop);
     RgtMtr.writeMicroseconds(Stop);
   }
   else {
     LftMtr.writeMicroseconds(1650);
-    RgtMtr.writeMicroseconds(1650);
+    RgtMtr.writeMicroseconds(1650);//robot moves to the left since right motor was damaged
     delay(900);
     LftMtr.writeMicroseconds(Stop);
     RgtMtr.writeMicroseconds(Stop);
   }
-  Grip.write(170);
+  Grip.write(170);//close grip
   delay(1000);
-  ArmBase.write(90);
+  ArmBase.write(90);//retract arm
   delay(1000);
   int tempTime = millis();
-  while((millis()-tempTime) <= 3000){
+  while((millis()-tempTime) <= 3000){//moves forward
     WriteForwardSpeed(1700);
   }
   LftMtr.writeMicroseconds(Stop);
   RgtMtr.writeMicroseconds(Stop);
- if (!((analogRead(HallGrip) - NOFIELDGRIP) > 8 || ((analogRead(HallGrip) - NOFIELDGRIP) < -8))) { //drop tesseract if not magnetic/missed tesseract
+
+ //checks to ensure robot has picked up magnetic tesseract
+ if (!((analogRead(HallGrip) - NOFIELDGRIP) > 8 || ((analogRead(HallGrip) - NOFIELDGRIP) < -8))) {
    ArmBend.write(20);
    delay(1000);
-   Grip.write(100);
+   Grip.write(100);//discards tesseract if not magnetic
    delay(500);
    for (int j = 20; j <= 130; j += 5) {
      ArmBend.write(j);
      delay(100);
    }
  }
- else {
+ else {//if passed inductance test, robot calls GoHome
    Serial.println("got tesseract");
+   GoHome();
  }
- GoHome();
 }
 
 void Position() {
