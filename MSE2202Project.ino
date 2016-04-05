@@ -1,3 +1,4 @@
+//==DEBUGGERS: UNCOMMENT TO DEBUG==//
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
@@ -5,91 +6,103 @@
 //#define DEBUG_TRACKING
 //#define DEBUG_PID
 
-#include <CharliePlexM.h>
 #include <Servo.h>
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
 #include <PID_v1.h>
 
-//Testing Variables
-unsigned long prevTime1 = 0;
-unsigned long prevTime2 = 0;
-unsigned long testTime = 0;
-unsigned tempEncoderPosition = 0;
-
-//pins
-const int LftMtrPin = 5;
+//===========PIN OUTS=============//
+const int UltrasonicPing = 2;
+//ULTRASONIC DATA RETURN IN D3
 const int RgtMtrPin = 4;
+const int LftMtrPin = 5;
 const int ArmBasePin = 6;
 const int ArmBendPin = 7;
-const int WristPin = 11;
 const int GripPin = 10;
+const int WristPin = 11;
 const int HallRgt = A0;
 const int HallLft = A1;
 const int GripLight = A2;
 const int HallGrip = A3;
-const int ci_I2C_SDA = A4;         // I2C data = white -> Nothing will be plugged into this
-const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plugged into this
-const int UltrasonicPing = 2;//data return in 3
-const int UltrasonicPingSide = 8;//data return in 9
-//ULTRASONIC SIDE DATA RETURN ON D9
+const int ci_I2C_SDA = A4; // I2C data = white -> Nothing will be plugged into this
+const int ci_I2C_SCL = A5; // I2C clock = yellow -> Nothing will be plugged into this
 
-//Flags/Switches
-bool StartLooking = true;
-bool EnableIncrement = true;
-bool TurnRight = true;
-bool StartTracking = false;
-bool startTask = true;
-bool start = true;
-int AnyUse;
-unsigned pickedUp;
-bool Start = true;
+//===========DATA VARIABLES=======//
 
-//Hall Sensor Stuff
-#define NOFIELDGRIP 510L
+//-----sensor data----//
+
+//Hall Sensor Data
+//right and left hall sensors on front are sampled at beginning to determine idle value
 int NOFIELDRGT = 0;
 int NOFIELDLFT = 0;
-#define TOMILLIGAUSS 976L//AT1324: 5mV = 1 Gauss, 1024 analog steps to 5V  
+#define NOFIELDGRIP 510L//grip idle value is consistently 510 L
+#define TOMILLIGAUSS 976L//Convert to milli Gauss forAT1324: 5mV = 1 Gauss, 1024 analog steps to 5V 
+int currentHallRead; //used to compare hall values for grip sensor
+int lastHallRead; //used to compare hall values for grip sensor
+unsigned HallThreshold = 6; //threshold for hall sensor to determin tesseract is within its vicinity
 
-int currentHallRead;
-int lastHallRead;
-unsigned HallThreshold = 6;
+//Line Tracker Data
+unsigned GripLightData = 0; //holds value for grip line tracker data
 
-//Mechanical Information
-unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
-unsigned ForwardSpeed = 1700; //speed of robot while looking in mode 1
-unsigned Stop = 1500;
-unsigned LftSpeed = 0;
-unsigned RgtSpeed = 0;
-
-//Line Tracker Stuff
-unsigned LineTrackerData = 0;
-unsigned GripLightData = 0;
-unsigned GripLightDark = 0;
-bool HitBlack = false;
-int HitBlackCount = 0;
-int HitBlackTarget = 3;
-
-//Data variables
-unsigned long HallSensorValue = 0;
+//Ultrasonic Data
 unsigned long UltrasonicDistance = 0;
-unsigned int timer;
-unsigned long timerStart;
-unsigned timeRun = 5;
 
+//-----mechanics data----//
+//Speeds
+unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
+unsigned Stop = 1500; //speed of robot to stop
+unsigned int MotorSpeed;
+unsigned int LftMotorSpeed;
+unsigned int RgtMotorSpeed;
+unsigned long LeftMotorOffset; //used to offset speeds without using PID
+unsigned long RightMotorOffset; //used to offset speed without using PID
 
+//Encoder Data
+I2CEncoder LftEncdr;
+I2CEncoder RgtEncdr;
+I2CEncoder ArmBaseEncdr;
+I2CEncoder ArmBendEncdr;
+long lftEncoderCounter;
+long rgtEncoderCounter;
+unsigned int LftMotorPos;
+unsigned int RgtMotorPos;
 
+//Servo Data
 Servo LftMtr;
 Servo ArmBend;    //out -> folded 0->180
 Servo ArmBase;    //folded->out  37-180
 Servo RgtMtr;
 Servo Grip;       //170 closed, 100 open
 Servo Wrist;      //0 min folded up, 50 straight out, 180 folded down
-I2CEncoder LftEncdr;
-I2CEncoder RgtEncdr;
-I2CEncoder ArmBaseEncdr;
-I2CEncoder ArmBendEncdr;
+
+
+
+
+
+
+
+//Flags/Switches
+bool TurnRight = true;
+bool startTask = true;
+unsigned pickedUp;
+bool Start = true;
+
+ 
+
+
+
+
+
+
+//Data variables
+unsigned int timer;
+unsigned long timerStart;
+unsigned timeRun = 5;
+
+
+
+
 
 //Mode Selector Variables
 unsigned int ModeIndex = 4;
@@ -98,15 +111,7 @@ unsigned int ModeIndex = 4;
 int MovFst = 2200;
 
 // variables
-unsigned int MotorSpeed;
-unsigned int LftMotorSpeed;
-unsigned int RgtMotorSpeed;
-unsigned int LftMotorPos;
-unsigned int RgtMotorPos;
-unsigned long LeftMotorOffset;
-unsigned long RightMotorOffset;
-long lftEncoderCounter;
-long rgtEncoderCounter;
+
 
 //PID Control
 double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
@@ -117,6 +122,7 @@ unsigned long PIDTimer;
 
 
 // Tracking Variables
+unsigned tempEncoderPosition = 0;
 unsigned long CourseWidth = 240; //course width in cm, has to be set prior to running
 unsigned long XPos = 0;
 long RawLftPrv = 0;
@@ -195,8 +201,6 @@ void setup() {
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicPing + 1, INPUT);
-  pinMode (UltrasonicPingSide, OUTPUT);
-  pinMode(UltrasonicPingSide + 1, INPUT);
 
   mtrPID.SetMode(AUTOMATIC);
   mtrPID.SetOutputLimits(1500, 1900);
@@ -409,15 +413,6 @@ void ReadLineTracker() {
 
 
 //Mode 1
-void TrackPosition() {
-  if (EnableIncrement == false && LftMtr.read() <= 270) {
-    EnableIncrement = true;
-  }
-  else if (EnableIncrement == false && LftMtr.read() > 270) {
-    XPos += WheelPerimeter;
-    EnableIncrement = false;
-  }
-}
 
 void PickUp(int i) {  //left = 1, right = 0
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
@@ -775,9 +770,9 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   delay(500);
   Wrist.write(120);
   delay(500);
-  AnyUse = (LftEncdr.getRawPosition() + 35u+
+  tempEncoderPosition = (LftEncdr.getRawPosition() + 35u+
   0);
-  while (LftEncdr.getRawPosition() < AnyUse) {
+  while (LftEncdr.getRawPosition() < tempEncoderPosition) {
     LftMtr.writeMicroseconds(1800);
     RgtMtr.writeMicroseconds(1550);
   }
@@ -835,16 +830,16 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   }
   Wrist.write(110);
   delay(1000);
-  AnyUse = (RgtEncdr.getRawPosition() - 480);
-  while (RgtEncdr.getRawPosition() > AnyUse) {
+  tempEncoderPosition = (RgtEncdr.getRawPosition() - 480);
+  while (RgtEncdr.getRawPosition() > tempEncoderPosition) {
     RgtMtr.writeMicroseconds(1350);
     LftMtr.writeMicroseconds(1350);
   }
   RgtMtr.writeMicroseconds(1500);
   LftMtr.writeMicroseconds(1500);
   pickedUp++;
-  AnyUse = (RgtEncdr.getRawPosition() - 480);
-  while (RgtEncdr.getRawPosition() > AnyUse) {
+  tempEncoderPosition = (RgtEncdr.getRawPosition() - 480);
+  while (RgtEncdr.getRawPosition() > tempEncoderPosition) {
     RgtMtr.writeMicroseconds(1350);
   }
   RgtMtr.writeMicroseconds(1500);
