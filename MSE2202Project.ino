@@ -583,32 +583,29 @@ void GoHome() {
   PlaceTesseract();//places tesseract on the wall
 }
 
+//Robot returns to previous point where it picked up last tesseract 
 void Return() {
-  Position();
-  Serial.println(PickUpTheta);
-    while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) { // was +5 and -5
-      Serial.println("Alinging Bot with saved polar theta...");
-      Serial.println(OrTheta);
-      LftMtr.writeMicroseconds(1650);
-      RgtMtr.writeMicroseconds(1350);
-    }
-    LftMtr.writeMicroseconds(1500);
-    RgtMtr.writeMicroseconds(1500);
+  Position();//updates position
+  //robot rotates until facing correct direction using polar angle OrTheta
+  while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) { 
+    LftMtr.writeMicroseconds(1650);
+    RgtMtr.writeMicroseconds(1350);
+  }
+  LftMtr.writeMicroseconds(1500);
+  RgtMtr.writeMicroseconds(1500);
 
-    savedLftEncdrReturn = abs(LftEncdr.getRawPosition());
-  //savedRgtEncdrReturn = abs(RgtEncdr.getRawPosition());
+  //stores current encoder position to prepare to return to previous position
+  savedLftEncdrReturn = abs(LftEncdr.getRawPosition());
+
+  //moves forward until robot traverses displacement from return point
   while (abs(LftEncdr.getRawPosition()) < (abs(savedLftEncdrReturn) + LftEncdrCount)) {
-    //Serial.println("Moving towards pickup position... ");
     WriteForwardSpeed(1700);
     Position();
   }
   
+  //updates displacement of robot centerpoint
   SvdDelDisp = ((DelRgt + DelLft) / 2) + sqrt((XPstn * XPstn) + (YPstn * YPstn));
-  Serial.print("Saved Disp: ");
-  Serial.println(SvdDelDisp);
-    while ((((DelRgt) + (DelLft)) / 2) < SvdDelDisp) { //Check
-      Serial.println("Moving towards pickup position... ");
-      Serial.println(((((DelRgt) + (DelLft)) / 2) < SvdDelDisp));
+    while ((((DelRgt) + (DelLft)) / 2) < SvdDelDisp) { 
       WriteForwardSpeed(1700);
       Position();
     }
@@ -616,17 +613,17 @@ void Return() {
     RgtMtr.writeMicroseconds(1500);
 
   if (!TurnRight) { //Turn number is even
+    //orients robot in correct direction
     while (!(OrTheta < 5 && OrTheta > -5)) {
-      Serial.println("Alinging Bot with 0 degrees, even turn...");
       LftMtr.writeMicroseconds(1350);
       RgtMtr.writeMicroseconds(1650);
 
       Position();
     }
-
-  } else { // Turn number is odd
+  } 
+  else { // Turn number is odd
+    //orients robot in correct direction
     while (!(OrTheta < 185 && OrTheta > 175)) {
-      Serial.println("Alinging Bot with 180 degrees, odd turn...");
       LftMtr.writeMicroseconds(1350);
       RgtMtr.writeMicroseconds(1650);
       Position();
