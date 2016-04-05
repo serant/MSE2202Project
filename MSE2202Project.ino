@@ -1,4 +1,3 @@
-//DEBUGGERS -> uncomment to debug
 //#define DEBUG_HALL_SENSOR
 //#define DEBUG_ULTRASONIC
 //#define DEBUG_LINE_TRACKER
@@ -37,14 +36,6 @@ const int UltrasonicPing = 2;//data return in 3
 const int UltrasonicPingSide = 8;//data return in 9
 //ULTRASONIC SIDE DATA RETURN ON D9
 
-
-//DEBUGGERS -> uncomment to debug
-//#define DEBUG_HALL_SENSOR
-//#define DEBUG_ULTRASONIC
-//#define DEBUG_LINE_TRACKER
-//#define DEBUG_ENCODERS
-//#define DEBUG_TRACKING
-//#define DEBUG_PID
 
 //Flags/Switches
 bool StartLooking = true;
@@ -251,15 +242,27 @@ void loop() {
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/
 
+      delay(3000);
+      PickUp(1);
+
+
+      break;
+
+    case 1: /**********************************mode 1 base = look */
+      Serial.println("Main Loop: In mode 1");
+
+      //Looks for Blocks
+      if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left 
+      else if ((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0); //
+
+      //Pings to detect if wall is in front
       Ping(UltrasonicPing);
-      delay(1000);
-      Serial.println(UltrasonicDistance);
-
-
-    case 1: /**********************************mode 1 base = look */ 
-    Serial.println((analogRead(HallRgt) - NOFIELDRGT));
-
-    Serial.println("Main Loop: In mode 1");
+      if (UltrasonicDistance <= 20) { //if wall is 10cm or closer
+        Serial.print("turning  ");
+        Serial.println(UltrasonicDistance);
+        RgtMtr.writeMicroseconds(Stop);//stops to prepare for turn
+        LftMtr.writeMicroseconds(Stop);
+        delay(100);
 
       //Looks for Blocks
       if (((analogRead(HallLft) - NOFIELDLFT) > 5) ||((analogRead(HallLft) - NOFIELDLFT) < -5)) {//if tesseract is at left hall sensor, call pickup and pass 1 to indicate left
@@ -383,7 +386,7 @@ void loop() {
       break;
     }
   }
-
+}
 //any time functions
 void Ping(int x) {
   //Ping Ultrasonic
@@ -414,6 +417,7 @@ void TrackPosition() {
 
 void PickUp(int i) {  //left = 1, right = 0
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
+
   switch (i) {
     case 0:
     LftMtr.writeMicroseconds(1450);
@@ -427,6 +431,7 @@ void PickUp(int i) {  //left = 1, right = 0
     delay(1000);
     LftMtr.writeMicroseconds(Stop);
     RgtMtr.writeMicroseconds(Stop);
+
     i = 3;
     break;
     case 1:
@@ -441,6 +446,12 @@ void PickUp(int i) {  //left = 1, right = 0
     RgtMtr.writeMicroseconds(Stop);
     i = 9;
   }
+  delay(500);
+  LftMtr.writeMicroseconds(1350);
+  RgtMtr.writeMicroseconds(1350);
+  delay(1500);
+  LftMtr.writeMicroseconds(Stop);
+  RgtMtr.writeMicroseconds(Stop);
   Grip.write(100);     //picking up tesseract
   Wrist.write(48);
   ArmBend.write(130);
@@ -449,12 +460,21 @@ void PickUp(int i) {  //left = 1, right = 0
   delay(1000);
   ArmBase.write(125);
   delay(1000);
-  if (i == 0) {
-    LftMtr.writeMicroseconds(1620);
-    RgtMtr.writeMicroseconds(1650);
-    delay(900);
-    LftMtr.writeMicroseconds(Stop);
-    RgtMtr.writeMicroseconds(Stop);
+
+  Grip.write(170);      //close grip and retract arm
+  delay(1000);
+  ArmBase.write(90);
+  delay(1000);
+  Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
+  if (!((analogRead(HallGrip) - NOFIELDGRIP) > 5 || ((analogRead(HallGrip) - NOFIELDGRIP) < -5))) { //drop tesseract if not magnetic/missed tesseract
+    ArmBend.write(20);
+    delay(1000);
+    Grip.write(100);
+    delay(500);
+    for (int j = 20; j <= 130; j += 5) {
+      ArmBend.write(j);
+      delay(100);
+    }
   }
   else {
     LftMtr.writeMicroseconds(1650);
@@ -564,25 +584,6 @@ void GoHome() {
 }
 
 void Return() {
-  /*
-    robot is at start and has already picked up a tesseract, return to last position where tesseract was picked up, continue with 'Look'
-    This operates in the following steps:
-
-    The following uses polar coordinates in R^2
-
-    First conditional: rotates the robot until its angle matches the saved angle prior to returning to home
-    therefore: if( current angle is less than saved angle and if its distance from the home position is less than the distance from the saved position)
-    action: *robot will turn*
-
-    Second conditional: robot will go to the saved point once it faces the correct direction
-    therefore: if the angle is greater or = to the saved angle (the robot should never surpass the angle by too much) and if its distance from
-                    the home position is less than the distance from the saved position
-    action: *robot moves forward*
-
-    Third conditional: robot calls Look() once returning to the correct position
-    therefore: if the angle is greater or = to the saved angle and if its distance from the home position is greater than or equal to the saved position distance
-
-    */
     Position();
     Serial.println(PickUpTheta);
   while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) { // was +5 and -5
@@ -958,4 +959,3 @@ void DebuggerModule() {
   }
   #endif
 }
-
