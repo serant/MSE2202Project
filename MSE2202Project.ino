@@ -564,6 +564,7 @@ void PlaceTesseract() {
   ArmBase.write(100);
   delay(500);
   Wrist.write(80);
+  Grip.write(160);
   Line = 0;
   BlockNumber++;
   delay(500);
@@ -592,10 +593,10 @@ void PlaceTesseract() {
       Serial.println("Turning...");
       LftMtr.writeMicroseconds (1650);
       RgtMtr.writeMicroseconds (1350);
-      delay(50);
+      delay(20);
       LftMtr.writeMicroseconds (1500);
       RgtMtr.writeMicroseconds (1500);
-      delay(100);
+      delay(70);
       Black = false;
       Light = true;
     } else if ((920 < analogRead(GripLight)) && (analogRead(GripLight) < 980) && Black == false && Light == true) { // Black line
@@ -609,10 +610,10 @@ void PlaceTesseract() {
         Black = false;
         LftMtr.writeMicroseconds (1650);
         RgtMtr.writeMicroseconds (1350);
-        delay(50);
+        delay(20);
         LftMtr.writeMicroseconds (1500);
         RgtMtr.writeMicroseconds (1500);
-        delay(100);
+        delay(70);
       }
     }
   }
