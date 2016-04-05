@@ -315,70 +315,89 @@ void loop() {
     Wrist.write(100);
     delay(1000);
 
-    while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {
-      for (int i = 0; i < 4; i++) {
+    while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {//if robot is not in proper position
+      for (int i = 0; i < 4; i++) {//ping several times to sample distance
         Ping(UltrasonicPing);
       }
+      //move forward a bit
       LftMtr.writeMicroseconds(1650);
       RgtMtr.writeMicroseconds(1660);
       delay(100);
+      //stop
       LftMtr.writeMicroseconds(1500);
       RgtMtr.writeMicroseconds(1500);
       delay(100);
     }
+    //zero encoders to begin tracking position
     LftEncdr.zero();
     RgtEncdr.zero();
+
+    //turn to the right a bit
     while (LftEncdr.getRawPosition() < 200) {
       LftMtr.writeMicroseconds(1700);
       delay(100);
       LftMtr.writeMicroseconds(1500);
       delay(100);
+
+      //determines if tesseract is within vicinity
       currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
       if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -122)) {
-        Move();
+        Move();//calls move to position to pick up tesseract 
       }
     }
     delay(400);
     while (LftEncdr.getRawPosition() > 0) {
+      //turn to the left a bit
       LftMtr.writeMicroseconds(1330);
       delay(100);
       LftMtr.writeMicroseconds(1500);
       delay(100);
+
+      //determines if tesseract is within vicinity
       currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
       if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-        Move();
+        Move();//calls move to position to pick up tesseract
       }
     }
     delay(400);
+    //moves back to center robot to scan again
     while (RgtEncdr.getRawPosition() < 200) {
       RgtMtr.writeMicroseconds(1630);
       delay(100);
       RgtMtr.writeMicroseconds(1500);
       delay(100);
+
+      //determines if tesseract is within vicinity
       currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
       if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-        Move();
+        Move();//calls move to position to pick up tesseract
       }
     }
     delay(400);
+
+    //moves back to center robot to scan again
     while (RgtEncdr.getRawPosition() > 0) {
       RgtMtr.writeMicroseconds(1370);
       delay(100);
       RgtMtr.writeMicroseconds(1500);
       delay(100);
+
+      //determines if tesseract is within vicinity
       currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
       if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-        Move();
+        Move();//calls move to position to pick up tesseract
       }
     }
     delay(400);
     break;
   }
 }
-//any time functions
+
+//========SENSOR FUNCTIONS========//
+//Sends out an ultrasonic pulse to be read
 void Ping(int x) {
   //Ping Ultrasonic
-  digitalWrite(x, HIGH);
+  digitalWrite(x, HIGH);//x is used since receive module will always be on consecutive digital pin
   mtrPID.SetMode(MANUAL);
   delayMicroseconds(10);//delay for 10 microseconds while pulse is in high
   mtrPID.SetMode(AUTOMATIC);
@@ -386,19 +405,21 @@ void Ping(int x) {
   UltrasonicDistance = (pulseIn(x + 1, HIGH, 10000) * 1.1 / 58);//returns in cm
 }
 
+//Gathers data from line tracker
 void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
 }
 
 
 
-//Mode 1
-
+//======MODE 1 FUNCTIONS=====//
+//Called to pick up a tesseract: based on which hall sensor detects inductance the robot positions
+//itself to pick up the tesseract
 void PickUp(int i) {  //left = 1, right = 0
   //robot has deteced tesseract and uses arm to pick it up, after picked up runs 'GoHome'
 
   switch (i) {
-    case 0:
+    case 0://if tesseract activated right sensor
     LftMtr.writeMicroseconds(1450);
     RgtMtr.writeMicroseconds(1400);
     delay(1000);
@@ -411,36 +432,41 @@ void PickUp(int i) {  //left = 1, right = 0
     LftMtr.writeMicroseconds(Stop);
     RgtMtr.writeMicroseconds(Stop);
 
-    i = 3;
-    break;
-    case 1:
-    i = 3;
-    break;
-    case 3:
-    delay(500);
-    LftMtr.writeMicroseconds(1350);
-    RgtMtr.writeMicroseconds(1350);
-    delay(1500);
-    LftMtr.writeMicroseconds(Stop);
+    case 1://if tesseract activated left  sensor
+    RgtMtr.writeMicroseconds(1450);
+    LftMtr.writeMicroseconds(1400);
+    delay(1000);
     RgtMtr.writeMicroseconds(Stop);
-    i = 9;
+    LftMtr.writeMicroseconds(Stop);
+    delay(200);
+    RgtMtr.writeMicroseconds(1600);
+    LftMtr.writeMicroseconds(1600);
+    delay(1000);
+    RgtMtr.writeMicroseconds(Stop);
+    LftMtr.writeMicroseconds(Stop);
   }
+
   delay(500);
+
+  //backs up robot a bit
   LftMtr.writeMicroseconds(1350);
   RgtMtr.writeMicroseconds(1350);
   delay(1500);
   LftMtr.writeMicroseconds(Stop);
   RgtMtr.writeMicroseconds(Stop);
-  Grip.write(100);     //picking up tesseract
-  Wrist.write(48);
-  ArmBend.write(130);
+
+  //---picks up tesseract--//
+  Grip.write(100); //opens grip
+  Wrist.write(48); //bends wrist up   
+  ArmBend.write(130); //extends arm
   delay(1000);
-  ArmBase.write(110);
+  ArmBase.write(110); //moves arm down
   delay(1000);
-  ArmBase.write(125);
+  ArmBase.write(125); //slowly moves arm around tesseract
   delay(1000);
   if (i == 0) {
-    LftMtr.writeMicroseconds(1620);
+    //if tesseract is to 
+    LftMtr.writeMicroseconds(1620); 
     RgtMtr.writeMicroseconds(1650);
     delay(900);
     LftMtr.writeMicroseconds(Stop);
