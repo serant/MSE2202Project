@@ -12,7 +12,6 @@
 #include <uSTimer2.h>
 #include <PID_v1.h>
 
-
 //Testing Variables
 unsigned long prevTime1 = 0;
 unsigned long prevTime2 = 0;
@@ -35,7 +34,6 @@ const int ci_I2C_SCL = A5;         // I2C clock = yellow -> Nothing will be plug
 const int UltrasonicPing = 2;//data return in 3
 const int UltrasonicPingSide = 8;//data return in 9
 //ULTRASONIC SIDE DATA RETURN ON D9
-
 
 //Flags/Switches
 bool StartLooking = true;
@@ -94,11 +92,7 @@ I2CEncoder ArmBaseEncdr;
 I2CEncoder ArmBendEncdr;
 
 //Mode Selector Variables
-
 unsigned int ModeIndex = 4;
-
-
-//pins FINALIZED DO NOT CHANGE THIS///////////////////
 
 
 int MovFst = 2200;
@@ -222,6 +216,7 @@ void loop() {
   DebuggerModule();
   Position();
 
+
   timer = millis() / 1000; //time in seconds
   //Ping(2);
   //Serial.println(UltrasonicDistance);
@@ -249,16 +244,14 @@ void loop() {
 
   switch (ModeIndex) {
     case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/
-    Serial.print("LEFT: ");
-    Serial.println((analogRead(HallLft) - NOFIELDLFT) > 10);
-    Serial.print("RIGHT: ");
-    Serial.println((analogRead(HallRgt) - NOFIELDRGT) > 10);
 
-      break; 
-
+      break;
     case 1: /**********************************mode 1 base = look */
-      Serial.println("Main Loop: In mode 1");
-
+      for (int i = 0; i < 10; i++) {
+        analogRead(HallLft);
+        analogRead(HallRgt);
+        analogRead(HallGrip);
+      }
       //Looks for Blocks
       if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left 
       else if ((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0); //
@@ -300,6 +293,7 @@ void loop() {
             while ((LftEncdr.getRawPosition() < tempEncoderPosition + 960)) {
               LftMtr.writeMicroseconds(1700);
             }
+
             LftMtr.writeMicroseconds(1500);
             RgtMtr.writeMicroseconds(1500);
           }
@@ -470,21 +464,12 @@ void PickUp(int i) {  //left = 1, right = 0
   delay(1000);
   ArmBase.write(125);
   delay(1000);
-
-  Grip.write(170);      //close grip and retract arm
-  delay(1000);
-  ArmBase.write(90);
-  delay(1000);
-  Serial.println(analogRead(HallGrip) - NOFIELDGRIP);
-  if (!((analogRead(HallGrip) - NOFIELDGRIP) > 5 || ((analogRead(HallGrip) - NOFIELDGRIP) < -5))) { //drop tesseract if not magnetic/missed tesseract
-    ArmBend.write(20);
-    delay(1000);
-    Grip.write(100);
-    delay(500);
-    for (int j = 20; j <= 130; j += 5) {
-      ArmBend.write(j);
-      delay(100);
-    }
+  if (i == 0) {
+    LftMtr.writeMicroseconds(1620);
+    RgtMtr.writeMicroseconds(1650);
+    delay(900);
+    LftMtr.writeMicroseconds(Stop);
+    RgtMtr.writeMicroseconds(Stop);
   }
   else {
     LftMtr.writeMicroseconds(1650);
@@ -503,19 +488,19 @@ void PickUp(int i) {  //left = 1, right = 0
   }
   LftMtr.writeMicroseconds(Stop);
   RgtMtr.writeMicroseconds(Stop);
-//  if (!((analogRead(HallGrip) - NOFIELDGRIP) > 8 || ((analogRead(HallGrip) - NOFIELDGRIP) < -8))) { //drop tesseract if not magnetic/missed tesseract
-//    ArmBend.write(20);
-//    delay(1000);
-//    Grip.write(100);
-//    delay(500);
-//    for (int j = 20; j <= 130; j += 5) {
-//      ArmBend.write(j);
-//      delay(100);
-//    }
-//  }
-//  else {
+ if (!((analogRead(HallGrip) - NOFIELDGRIP) > 8 || ((analogRead(HallGrip) - NOFIELDGRIP) < -8))) { //drop tesseract if not magnetic/missed tesseract
+   ArmBend.write(20);
+   delay(1000);
+   Grip.write(100);
+   delay(500);
+   for (int j = 20; j <= 130; j += 5) {
+     ArmBend.write(j);
+     delay(100);
+   }
+ }
+ else {
      Serial.println("got tesseract");
-
+  }
   GoHome();
 }
 
@@ -544,6 +529,7 @@ void Position() {
   //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
   //Serial.println(YPstn);
   PolTheta = (atan(YPstn / XPstn) * (180 / PI)); //The polar angle of the position of the robot
+
     Serial.print("Pol Theta: ");
     Serial.println(PolTheta);
 
@@ -606,13 +592,11 @@ void GoHome() {
 void Return() {
     Position();
     Serial.println(PickUpTheta);
-  while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) { // was +5 and -5
+    while (!(OrTheta < (PickUpTheta + 5) && OrTheta > (PickUpTheta - 5))) { // was +5 and -5
     Serial.println("Alinging Bot with saved polar theta...");
     Serial.println(OrTheta);
     LftMtr.writeMicroseconds(1650);
     RgtMtr.writeMicroseconds(1350);
-
-    Position();
   }
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
@@ -634,7 +618,6 @@ void Return() {
     WriteForwardSpeed(1700);
     Position();
     }
-    
     LftMtr.writeMicroseconds(1500);
     RgtMtr.writeMicroseconds(1500);
 
@@ -652,14 +635,12 @@ void Return() {
       Serial.println("Alinging Bot with 180 degrees, odd turn...");
       LftMtr.writeMicroseconds(1350);
       RgtMtr.writeMicroseconds(1650);
-
       Position();
     }
   }
 }
 
 void PlaceTesseract() {
-
   // Allign with wall
   while (!((OrTheta < -210) && (OrTheta > -220))) {
     LftMtr.writeMicroseconds(1625);
@@ -803,6 +784,7 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
   delay(1000);
+
   LftEncdr.zero();
   RgtEncdr.zero();
   while (LftEncdr.getRawPosition() < 1700) {
@@ -825,6 +807,7 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
     LftMtr.writeMicroseconds(1340);
     RgtMtr.writeMicroseconds(1340);
   }
+
   delay(150);
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
@@ -910,6 +893,7 @@ void PIDSpeed(unsigned uSSpd) { //used to ensure robot travels straight during c
 void DebuggerModule() {
   //Debugger module -> all debugger code can go here
 
+
   #ifdef DEBUG_HALL_SENSOR
   Serial.println((analogRead(HallLft) - NOFIELDLFT) * TOMILLIGAUSS / 1000);
   Serial.println((analogRead(HallRgt) - NOFIELDRGT) * TOMILLIGAUSS / 1000);
@@ -954,7 +938,6 @@ void DebuggerModule() {
   Serial.print(LftMotorPos);
   Serial.print(", R: ");
   Serial.println(RgtMotorPos);
-
   #endif
 
   #ifdef DEBUG_PID
