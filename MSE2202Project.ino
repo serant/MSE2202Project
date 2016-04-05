@@ -1,10 +1,9 @@
-//==DEBUGGERS: UNCOMMENT TO DEBUG==//
-//#define DEBUG_HALL_SENSOR
-//#define DEBUG_ULTRASONIC
-//#define DEBUG_LINE_TRACKER
-//#define DEBUG_ENCODERS
-//#define DEBUG_TRACKING
-//#define DEBUG_PID
+/*
+RELEASE 1.0
+Project code used in MSE2202B Design Showcase
+*/
+
+
 
 #include <Servo.h>
 #include <I2CEncoder.h>
@@ -12,6 +11,13 @@
 #include <uSTimer2.h>
 #include <PID_v1.h>
 
+//==DEBUGGERS: UNCOMMENT TO DEBUG==//
+//#define DEBUG_HALL_SENSOR
+//#define DEBUG_ULTRASONIC
+//#define DEBUG_LINE_TRACKER
+//#define DEBUG_ENCODERS
+//#define DEBUG_TRACKING
+//#define DEBUG_PID
 //===========PIN OUTS=============//
 const int UltrasonicPing = 2;
 //ULTRASONIC DATA RETURN IN D3
@@ -48,6 +54,34 @@ unsigned GripLightData = 0; //holds value for grip line tracker data
 //Ultrasonic Data
 unsigned long UltrasonicDistance = 0;
 
+//-------PID Control-------//
+double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
+double Kp = 11.9, Ki = 100, Kd = 0.00001; //PID parameters
+unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
+PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
+unsigned long PIDTimer;
+
+//-------tracking using encoders-----------/
+const double CE = 637;//pulses per revolution
+const double CF = ((3.14159 * 69.85) / CE); //Conversion factor, traslates encoder pulses to linear displacement
+double DelLft = 0;
+double DelRgt = 0;
+double DelDsp = 0;
+long TotalDsp = 0;
+double SvdDsp = 0;
+double Dsp = 0;
+double OrTheta = 0;
+double dTheta = 0;
+double PolTheta = 0;
+double FindTheta = 0;
+double PickUpTheta = 0;
+double XPstn = 0;
+double YPstn = 0;
+bool Light = false;
+int Line = 0;
+double SvdDelDisp = 0;
+unsigned targetTheta = 0; //used for reorienting robot
+
 //-----mechanics data----//
 //Speeds
 unsigned WheelPerimeter = (69.85 * PI) / 10; //perimeter of wheel in cm
@@ -67,6 +101,12 @@ long lftEncoderCounter;
 long rgtEncoderCounter;
 unsigned int LftMotorPos;
 unsigned int RgtMotorPos;
+unsigned tempEncoderPosition = 0;
+long RawLftPrv = 0;
+long RawRgtPrv = 0;
+double savedLftEncdr = 0;
+double LftEncdrCount = 0;
+double savedLftEncdrReturn = 0;
 
 //Servo Data
 Servo LftMtr;
@@ -76,10 +116,11 @@ Servo RgtMtr;
 Servo Grip;       //170 closed, 100 open
 Servo Wrist;      //0 min folded up, 50 straight out, 180 folded down
 
-
-
-
-
+//----program flow control//
+//Timer
+unsigned int timer;
+unsigned long timerStart;
+unsigned timeRun = 5;
 
 
 //Flags/Switches
@@ -88,152 +129,86 @@ bool startTask = true;
 unsigned pickedUp;
 bool Start = true;
 
- 
-
-
-
-
-
-
-//Data variables
-unsigned int timer;
-unsigned long timerStart;
-unsigned timeRun = 5;
-
-
-
-
-
-//Mode Selector Variables
+ //Mode Selector Variable
 unsigned int ModeIndex = 4;
 
 
-int MovFst = 2200;
-
-// variables
-
-
-//PID Control
-double PIDRgt, PIDRgtPwr, PIDLft;//monitored value, controlled value, setpoint
-double Kp = 11.9, Ki = 100, Kd = 0.00001; //PID parameters
-unsigned accSpd = 0;//used for acceleration of the robot to allow PID to operate properly
-PID mtrPID(&PIDRgt, &PIDRgtPwr, &PIDLft, Kp, Ki, Kd, DIRECT);//PID control to allow robot to drive straight
-unsigned long PIDTimer;
-
-
-// Tracking Variables
-unsigned tempEncoderPosition = 0;
-unsigned long CourseWidth = 240; //course width in cm, has to be set prior to running
-unsigned long XPos = 0;
-long RawLftPrv = 0;
-long RawRgtPrv = 0;
-const double CE = 637;//pulses per revolution
-const double CF = ((3.14159 * 69.85) / CE); //Conversion factor, traslates encoder pulses to linear displacement
-double DelLft = 0;
-double DelRgt = 0;
-double DelDsp = 0;
-long TotalDsp = 0;
-double SvdDsp = 0;
-double Dsp = 0;
-double OrTheta = 0;
-double PrvOrTheta = 0;
-double dTheta = 0;
-double PolTheta = 0;
-double FindTheta = 0;
-double PickUpTheta = 0;
-double XPstn = 0;
-double dXPstn = 0;
-double YPstn = 0;
-bool Black = false;
-bool Light = false;
-int BlockNumber = 0;
-int Line = 0;
-double SvdDelDisp = 0;
-unsigned targetTheta = 0; //used for reorienting robot
-double savedLftEncdr = 0;
-double LftEncdrCount = 0;
-double savedLftEncdrReturn = 0;
-
-int StepIndex;
-
-
-
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);//begin serial monitor at 9600 baud
   Wire.begin();
   delay(2000);
-  // Set up two motors
 
+  //set up right servo motor
   pinMode(RgtMtrPin, OUTPUT);
   RgtMtr.attach(RgtMtrPin);
 
+  //set up left servo motor
   pinMode(LftMtrPin, OUTPUT);
   LftMtr.attach(LftMtrPin);
 
+  //set up servo motor to control grip
   pinMode(GripPin, OUTPUT);
   Grip.attach(GripPin);
+  Grip.write(110); //open grip slightly 
 
-  Grip.write(110);
-
+  //set up servo motor to control wrist
   pinMode(WristPin, OUTPUT);
   Wrist.attach(WristPin);
-  Wrist.write(80);
+  Wrist.write(80);//open wrist slightly
 
-  // Set up encoders DO NOT CHANGE ORDER
+  // set up encoders right encoder must be set up first since the left is daisy chained
   RgtEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   RgtEncdr.setReversed(false);  // adjust for positive count when moving forward
 
   LftEncdr.init(1.0 / 3.0 * MOTOR_393_SPEED_ROTATIONS, MOTOR_393_TIME_DELTA);
   LftEncdr.setReversed(true);  // adjust for positive count when moving forward
 
+  //set up arm base servo motor
   pinMode(ArmBasePin, OUTPUT);
   ArmBase.attach(ArmBasePin);
   ArmBase.write(40);
 
+  //set up arm bend/elbow servo motor
   pinMode(ArmBendPin, OUTPUT);
   ArmBend.attach(ArmBendPin);
   ArmBend.write(150);
 
-  pinMode(7, INPUT);
-
+  //set up VEX line tracker on grip
   pinMode(GripLight, INPUT);
 
   //ultrasonic setup
   pinMode(UltrasonicPing, OUTPUT);
   pinMode(UltrasonicPing + 1, INPUT);
 
+  //set up PID control
   mtrPID.SetMode(AUTOMATIC);
   mtrPID.SetOutputLimits(1500, 1900);
   mtrPID.SetSampleTime(10);
   
+  //initialize hall effect sensors with idle field value
   for(int i = 0; i < 10; i++){
+    //sum cummulative data for hall sensors
     NOFIELDLFT += analogRead(HallLft);
     NOFIELDRGT += analogRead(HallRgt);
     delay(100);
   }
+  //average data
   NOFIELDLFT = NOFIELDLFT/10;
   NOFIELDRGT = NOFIELDRGT/10;
 }
 
 void loop() {
-  //***************************stuff running through every time
-  DebuggerModule();
-  Position();
-
+  DebuggerModule();//prints any serial statements defined by debugger at top
+  Position();//updates position of robot
 
   timer = millis() / 1000; //time in seconds
-  //Ping(2);
-  //Serial.println(UltrasonicDistance);
-  if (timer % 5 < 1) {
-    Serial.print("time = ");
-   // Serial.println(timer);
 
-  }
   if (timer >= 240) {  //4 min time limit
-    Serial.println("Look: GoHome called");
+    // robot goes home if time limit is reached
     GoHome();
     ModeIndex = 0;
   }
+
   if (startTask) {       //only runs this until mode started, 1 sec delay, must reset to change mode
     if (digitalRead(13)) {   //switch 1 up = stay in 0, down = start mode 1 or 2
       startTask = false;
@@ -247,22 +222,22 @@ void loop() {
   if (!(digitalRead(13))) ModeIndex = 0;
 
   switch (ModeIndex) {
-    case 0: /***********sitting around waiting, use this mode to test stuff, then clear*/
+    case 0: //robot idles
 
       break;
-    case 1: /**********************************mode 1 base = look */
-      for (int i = 0; i < 10; i++) {
-        analogRead(HallLft);
-        analogRead(HallRgt);
-        analogRead(HallGrip);
-      }
+    case 1: //robot is in mode 1: searches for tesseracts
+
       //Looks for Blocks
-      if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left 
+      //if tesseract is at left hall sensor, call pickup and pass 1 to indicate left 
+      if ((analogRead(HallLft) - NOFIELDLFT) > HallThreshold) PickUp(1); 
+
+      //if tesseract is at right hall sensor, call pickup and pass 0 to indicate right
       else if ((analogRead(HallRgt) - NOFIELDRGT) > HallThreshold) PickUp(0); //
 
       //Pings to detect if wall is in front
       Ping(UltrasonicPing);
-      if (UltrasonicDistance <= 20) { //if wall is 10cm or closer
+
+      if (UltrasonicDistance <= 20) { //if wall is 20cm or closer
         Serial.print("turning  ");
         Serial.println(UltrasonicDistance);
         RgtMtr.writeMicroseconds(Stop);//stops to prepare for turn
