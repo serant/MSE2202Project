@@ -1,9 +1,18 @@
+//DEBUGGERS -> uncomment to debug
+//#define DEBUG_HALL_SENSOR
+//#define DEBUG_ULTRASONIC
+//#define DEBUG_LINE_TRACKER
+//#define DEBUG_ENCODERS
+//#define DEBUG_TRACKING
+//#define DEBUG_PID
+
 #include <CharliePlexM.h>
 #include <Servo.h>
 #include <I2CEncoder.h>
 #include <Wire.h>
 #include <uSTimer2.h>
-#include "PID_v1.h"
+#include <PID_v1.h>
+
 
 //Testing Variables
 unsigned long prevTime1 = 0;
@@ -36,7 +45,6 @@ const int UltrasonicPingSide = 8;//data return in 9
 //#define DEBUG_ENCODERS
 //#define DEBUG_TRACKING
 //#define DEBUG_PID
-
 
 //Flags/Switches
 bool StartLooking = true;
@@ -93,16 +101,11 @@ I2CEncoder ArmBaseEncdr;
 I2CEncoder ArmBendEncdr;
 
 //Mode Selector Variables
-unsigned int ModeIndex = 0;
-unsigned int ModeIndicator[6] = {
-  0x00, //Default Mode (Mode 0)
-  0x00FF, //Mode 1
-  0x0F0F, //Mode 2
-  0x3333, //Calibrate Line Tracker to Dark
-  0xAAAA, //Calibrate Motors (might not need)
-  0xFFFF
-};
 
+unsigned int ModeIndex = 4;
+
+
+//pins FINALIZED DO NOT CHANGE THIS///////////////////
 
 
 int MovFst = 2200;
@@ -156,6 +159,7 @@ unsigned targetTheta = 0; //used for reorienting robot
 double savedLftEncdr = 0;
 double LftEncdrCount = 0;
 double savedLftEncdrReturn = 0;
+
 int StepIndex;
 
 void setup() {
