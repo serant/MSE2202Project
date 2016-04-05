@@ -507,6 +507,7 @@ void PickUp(int i) {  //left = 1, right = 0
  }
 }
 
+//Determines the polar and cartesian coordinates of the robot based on encoder values
 void Position() {
   // PickUpTheta, FindTheta, SvdRgtEncdr, SvdLftEncdr
 
@@ -516,80 +517,67 @@ void Position() {
   DelDsp = (DelRgt + DelLft) / 2; //Distance traveled by the centerpoint of the robot, affected by quadrent
   Dsp = Dsp + DelDsp; //Current Displacement
   TotalDsp = (abs(DelRgt) + abs(DelLft)) / 2; //Total distance travelled
-  //Serial.print("Displacement: ");
-  //Serial.println(Dsp);
 
   OrTheta = ((DelRgt - DelLft) / 115.5) * (180 / PI); // Change in orientation, taking starting postion as Theta = 0
   OrTheta = (int)OrTheta % 360; //If the magnitude of the orientation is greater than 360
 
- // Serial.print("Orientation Theta: ");
-  //Serial.println(OrTheta); // Theta from wherever the bot was first placed
-
   XPstn = DelDsp * cos((OrTheta * PI) / 180);
   YPstn = DelDsp * sin((OrTheta * PI) / 180);
-  //Serial.print("X: ");  //X coordinates of the robot (right is positive)
-  //Serial.println(XPstn);
-  //Serial.print( "Y: ");  //Y coordinates of the robot (up is positive)
-  //Serial.println(YPstn);
+
   PolTheta = (atan(YPstn / XPstn) * (180 / PI)); //The polar angle of the position of the robot
-
-  Serial.print("Pol Theta: ");
-  Serial.println(PolTheta);
-
 }
 
+//called after the robot picks up a tesseract and sends the robot to the start point
 void GoHome() {
   //robot calculates and saves position and returns to base after tesseract picked up, runs 'Look'
-  Position();
-  for (int i = 0; i > 0; i++) {
-    SvdDsp = DelDsp;
+  Position();//updates position
+  for (int i = 0; i > 0; i++) {//performed once
+    SvdDsp = DelDsp;//saves position and angle
     PickUpTheta = PolTheta;
-    //Serial.println("saved values");
   }
 
   if (!TurnRight) { //Turn number is even, right turn == true
     targetTheta = PolTheta;
     while (!(OrTheta < (targetTheta + 185) && OrTheta > (targetTheta + 175))) {
       Serial.println("Alinging Bot, even turn...");
-      LftMtr.writeMicroseconds(1350);
+      LftMtr.writeMicroseconds(1350);//turns until facing correct direction
       RgtMtr.writeMicroseconds(1650);
-      Position();
+      Position();//updates position each cycle
     }
   }
   else { // Turn number is odd
     targetTheta = PolTheta;
-    while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta -5))) { //Test
+    while (!(OrTheta < (PolTheta + 5) && OrTheta > (PolTheta -5))) { 
       Serial.println("Alinging Bot, odd turn...");
-      LftMtr.writeMicroseconds(1350);
+      LftMtr.writeMicroseconds(1350);//turns opposite direction until facing correct direction
       RgtMtr.writeMicroseconds(1650);
-
       Position();
     }
   }
 
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
-  //delay(500);
+
   Ping(2);
 
   savedLftEncdr = abs(LftEncdr.getRawPosition());
-  //savedRgtEncdr = abs(RgtEncdr.getRawPosition());
-  while ((UltrasonicDistance > 19) && (UltrasonicDistance != 0)) {
+  savedRgtEncdr = abs(RgtEncdr.getRawPosition());
 
-    //Serial.println("Moving towards origin...");
-    //Serial.print(UltrasonicDistance * 58, DEC);
+  //move robot forward until it is at a specified distance from the home position
+  while ((UltrasonicDistance > 19) && (UltrasonicDistance != 0)) {
     WriteForwardSpeed(1700);
     Position();
     Ping(2);
   }
+
+  //determines displacement from its previous position to home position to return to later
   LftEncdrCount = abs(LftEncdr.getRawPosition()) - savedLftEncdr;
-  //RgtEncdrCount = abs(Rgt.Encdr.getRawPosition()) - savedRgtEncdr;
-  //TravelEncdrCount = (LftEncdrCount + RgtEncdrCount )/2;
+  RgtEncdrCount = abs(Rgt.Encdr.getRawPosition()) - savedRgtEncdr;
 
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
 
-  PlaceTesseract();
+  PlaceTesseract();//places tesseract on the wall
 }
 
 void Return() {
