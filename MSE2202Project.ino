@@ -697,6 +697,8 @@ void PlaceTesseract() {
   }
 }
 
+
+//==========MODE 2 FUNCTIONS============//
 //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
 void Check() {
 
@@ -816,7 +818,6 @@ void Move() {
 }
 
 //robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
-  Grip.write(170);
 void DropOff() {
   delay(500);
   ArmBase.write(90);
