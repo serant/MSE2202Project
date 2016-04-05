@@ -224,6 +224,8 @@ void loop() {
     case 0: //robot idles
 
     break;
+
+    //=====CASE 1 IS THE MAIN LOOP FOR MODE 1=====/
     case 1: //robot is in mode 1: searches for tesseracts
 
       //Looks for Blocks
@@ -245,20 +247,20 @@ void loop() {
       }
 
       //if tesseract triggers right hall sensor
-       else if (((analogRead(HallRgt) - NOFIELDRGT) > 10) || ((analogRead(HallRgt) - NOFIELDRGT) < -10 )) {
+      else if (((analogRead(HallRgt) - NOFIELDRGT) > 10) || ((analogRead(HallRgt) - NOFIELDRGT) < -10 )) {
         PickUp(0);
-       Serial.println("Entered right");
+        Serial.println("Entered right");
       }
 
 
-      else if ((millis() - timerStart) > timeRun) {
-        //ultrasonic is more reliable when robot stops: may be due to wiring issue
-        LftMtr.writeMicroseconds(1500);//robot stops to ping ultrasonic
-        RgtMtr.writeMicroseconds(1500);
-        mtrPID.SetMode(MANUAL);//PID stops sampling to prevent negative feedback
-        delay(500);//robot delays
-        Ping(UltrasonicPing);//robot pings ultrasonic
-        mtrPID.SetMode(AUTOMATIC);//PID resumes
+    else if ((millis() - timerStart) > timeRun) {
+      //ultrasonic is more reliable when robot stops: may be due to wiring issue
+      LftMtr.writeMicroseconds(1500);//robot stops to ping ultrasonic
+      RgtMtr.writeMicroseconds(1500);
+      mtrPID.SetMode(MANUAL);//PID stops sampling to prevent negative feedback
+      delay(500);//robot delays
+      Ping(UltrasonicPing);//robot pings ultrasonic
+      mtrPID.SetMode(AUTOMATIC);//PID resumes
         
         //frequency of ultrasonic pings are dependant on how far away the wall is
         if (UltrasonicDistance < 300 && UltrasonicDistance != 0) timeRun = 4000;
@@ -293,82 +295,84 @@ void loop() {
       }
       else {
         WriteForwardSpeed(1800);//robot moves forward using PID
-      }
-      break;
-
-      case 2:  /********************mode 2 base = check   */ Serial.println("In mode 2");
-
-      //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
-      // Robo --> back and forth scanning motion
-      lastHallRead = analogRead(HallGrip);
-      lftEncoderCounter = LftEncdr.getRawPosition();
-      rgtEncoderCounter = RgtEncdr.getRawPosition();
-
-      ArmBase.write(90); // 37 - 179 folded to out
-      ArmBend.write(115); // 0 -180 out to folded
-      Grip.write(170); // closed grip
-      Wrist.write(100);
-      delay(1000);
-
-      while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {
-        for (int i = 0; i < 4; i++) {
-          Ping(UltrasonicPing);
-        }
-        LftMtr.writeMicroseconds(1650);
-        RgtMtr.writeMicroseconds(1660);
-        delay(100);
-        LftMtr.writeMicroseconds(1500);
-        RgtMtr.writeMicroseconds(1500);
-        delay(100);
-      }
-      LftEncdr.zero();
-      RgtEncdr.zero();
-      while (LftEncdr.getRawPosition() < 200) {
-        LftMtr.writeMicroseconds(1700);
-        delay(100);
-        LftMtr.writeMicroseconds(1500);
-        delay(100);
-        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-        if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -122)) {
-          Move();
-        }
-      }
-      delay(400);
-      while (LftEncdr.getRawPosition() > 0) {
-        LftMtr.writeMicroseconds(1330);
-        delay(100);
-        LftMtr.writeMicroseconds(1500);
-        delay(100);
-        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-        if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-          Move();
-        }
-      }
-      delay(400);
-      while (RgtEncdr.getRawPosition() < 200) {
-        RgtMtr.writeMicroseconds(1630);
-        delay(100);
-        RgtMtr.writeMicroseconds(1500);
-        delay(100);
-        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-        if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-          Move();
-        }
-      }
-      delay(400);
-      while (RgtEncdr.getRawPosition() > 0) {
-        RgtMtr.writeMicroseconds(1370);
-        delay(100);
-        RgtMtr.writeMicroseconds(1500);
-        delay(100);
-        currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-        if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
-          Move();
-        }
-      }
-      delay(400);
-      break;
     }
+    break;
+
+    //======CASE 2 IS THE MAIN LOOP FOR MODE 2=====/
+    case 2:  
+    Serial.println("In mode 2");
+
+    //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
+    // Robo --> back and forth scanning motion
+
+    lastHallRead = analogRead(HallGrip);
+    lftEncoderCounter = LftEncdr.getRawPosition();
+    rgtEncoderCounter = RgtEncdr.getRawPosition();
+
+    ArmBase.write(90); // 37 - 179 folded to out
+    ArmBend.write(115); // 0 -180 out to folded
+    Grip.write(170); // closed grip
+    Wrist.write(100);
+    delay(1000);
+
+    while (UltrasonicDistance > 21 || UltrasonicDistance < 10) {
+      for (int i = 0; i < 4; i++) {
+        Ping(UltrasonicPing);
+      }
+      LftMtr.writeMicroseconds(1650);
+      RgtMtr.writeMicroseconds(1660);
+      delay(100);
+      LftMtr.writeMicroseconds(1500);
+      RgtMtr.writeMicroseconds(1500);
+      delay(100);
+    }
+    LftEncdr.zero();
+    RgtEncdr.zero();
+    while (LftEncdr.getRawPosition() < 200) {
+      LftMtr.writeMicroseconds(1700);
+      delay(100);
+      LftMtr.writeMicroseconds(1500);
+      delay(100);
+      currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+      if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -122)) {
+        Move();
+      }
+    }
+    delay(400);
+    while (LftEncdr.getRawPosition() > 0) {
+      LftMtr.writeMicroseconds(1330);
+      delay(100);
+      LftMtr.writeMicroseconds(1500);
+      delay(100);
+      currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+      if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
+        Move();
+      }
+    }
+    delay(400);
+    while (RgtEncdr.getRawPosition() < 200) {
+      RgtMtr.writeMicroseconds(1630);
+      delay(100);
+      RgtMtr.writeMicroseconds(1500);
+      delay(100);
+      currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+      if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
+        Move();
+      }
+    }
+    delay(400);
+    while (RgtEncdr.getRawPosition() > 0) {
+      RgtMtr.writeMicroseconds(1370);
+      delay(100);
+      RgtMtr.writeMicroseconds(1500);
+      delay(100);
+      currentHallRead = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
+      if ((currentHallRead - lastHallRead > 12) || (currentHallRead - lastHallRead < -12)) {
+        Move();
+      }
+    }
+    delay(400);
+    break;
   }
 }
 //any time functions
