@@ -104,8 +104,11 @@ unsigned tempEncoderPosition = 0;
 long RawLftPrv = 0;
 long RawRgtPrv = 0;
 double savedLftEncdr = 0;
+double savedRgtEncdr = 0;
 double LftEncdrCount = 0;
+double RgtEncdrCount = 0;
 double savedLftEncdrReturn = 0;
+double SavedRgtEncdrReturn = 0;
 
 //Servo Data
 Servo LftMtr;
@@ -572,7 +575,7 @@ void GoHome() {
 
   //determines displacement from its previous position to home position to return to later
   LftEncdrCount = abs(LftEncdr.getRawPosition()) - savedLftEncdr;
-  RgtEncdrCount = abs(Rgt.Encdr.getRawPosition()) - savedRgtEncdr;
+  RgtEncdrCount = abs(RgtEncdr.getRawPosition()) - savedRgtEncdr;
 
   LftMtr.writeMicroseconds(1500);
   RgtMtr.writeMicroseconds(1500);
