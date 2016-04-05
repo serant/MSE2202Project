@@ -413,6 +413,42 @@ void ReadLineTracker() {
   GripLightData = analogRead(GripLight);
 }
 
+//--------PID functions---------//
+//THIS IS HOW YOU WRITE A FORWARD SPEED TO THE ROBOT.
+//IT'S THE EXACT SAME AS servoObject.write(pwmSpd)
+//pwmSpd -> desired pwm in ms
+//servoObject -> either LftMtr or RgtMtr
+void WriteForwardSpeed(unsigned pwmSpd) {
+  //If the robot hasn't reached the desired speed, keep accelerating
+  if (LftMtr.readMicroseconds() != pwmSpd) { //stops when desired speed is written to LftMtr
+    MotorAccelerate(pwmSpd);
+  }
+  else {
+    PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
+  }
+}
+void MotorAccelerate(unsigned uSSpd) {
+  for (int accStps = 10; accStps >= 1; accStps--) { //steps to accelerate robot
+    mtrPID.SetSampleTime(10);//change this value if the robot moves off track at the beginning
+    accSpd = constrain((1500 + ((uSSpd - 1500) / accStps)), 1500, 2100); //left speed increases from 1500ms to target speed
+    mtrPID.SetMode(MANUAL);
+    delayMicroseconds(20);
+    mtrPID.SetMode(AUTOMATIC);
+    PIDSpeed(accSpd);//sends the current speed for PID control to right motor
+  }
+  mtrPID.SetSampleTime(10);//sets sampling time for PID control
+  PIDSpeed(uSSpd);//sets first datapoint for target speed
+}
+void PIDSpeed(unsigned uSSpd) { //used to ensure robot travels straight during constant velocity
+  mtrPID.SetTunings(Kp, Ki, Kd);
+  PIDLft = LftEncdr.getSpeed();//set point
+  PIDRgt = RgtEncdr.getSpeed();//monitored variable
+
+  mtrPID.Compute();//computes using Kp, Ki, Kd
+
+  LftMtr.writeMicroseconds(uSSpd);//writes desired pwm pulse to left motor
+  RgtMtr.writeMicroseconds(PIDRgtPwr);//writes controled pwm pulse to right motor
+}
 
 
 //======MODE 1 FUNCTIONS=====//
@@ -631,12 +667,12 @@ void Return() {
   }
 }
 
+//robot places tesseract on the wall between lines
 void PlaceTesseract() {
   // Allign with wall
   while (!((OrTheta < -210) && (OrTheta > -220))) {
     LftMtr.writeMicroseconds(1625);
     RgtMtr.writeMicroseconds(1375);
-    //Serial.println(OrTheta);
     Position();
   }
   // Move towards wall
@@ -661,10 +697,9 @@ void PlaceTesseract() {
   }
 }
 
-
+//robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
 void Check() {
 
-  //robot continiously checks wall to see if there is a tesseract available, if found runs 'Move'
 
   // Robo --> back and forth scanning motion
   LftMotorSpeed = constrain(MotorSpeed + LeftMotorOffset, 1500, 2200);
@@ -680,8 +715,6 @@ void Check() {
   LftMtr.writeMicroseconds(LftMotorSpeed);
   for (LftEncoderCounter; LftEncoderCounter < 40; LftEncoderCounter++) {
     int currentHallReading = analogRead(HallGrip); // Hall Grip Values: 515 --> no magnetic field, below 500 --> magnetic field
-    //Serial.print("Left Encoder Forward: ");
-    //Serial.println(LftEncoderCounter);
     if (currentHallReading - lastHallReading > 15) {
       return;
     }
@@ -690,8 +723,6 @@ void Check() {
   LftMtr.writeMicroseconds(LftMotorSpeed);
   for (LftEncoderCounter; LftEncoderCounter > 0; LftEncoderCounter--) {
     int currentHallReading = analogRead(HallGrip);
-    //Serial.print("Left Encoder Backward: ");
-    //Serial.println(LftEncoderCounter);
     if (currentHallReading - lastHallReading > 15) {
       return;
     }
@@ -704,8 +735,6 @@ void Check() {
   RgtMtr.writeMicroseconds(RgtMotorSpeed);
   for (RgtEncoderCounter; RgtEncoderCounter < 40; RgtEncoderCounter++) {
     int currentHallReading = analogRead(HallGrip);
-    //Serial.print("Right Encoder Forward: ");
-    //Serial.println(RgtEncoderCounter);
     if (currentHallReading - lastHallReading > 15) {
       return;
     }
@@ -725,10 +754,9 @@ void Check() {
   delay(200);
 }
 
-
-void Move() {//detected tesseract on wall, pick it up, turn, move under beam, then run DropOff
-  //robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
-
+//detected tesseract on wall, pick it up, turn, move under beam, then run DropOff
+//robot picks up tesseract from wall, drives under beam and hangs tesseract on overhang, returns back under beam, runs 'Check'
+void Move() {
   LftMtr.writeMicroseconds(Stop);
   RgtMtr.writeMicroseconds(Stop);
   RgtMtr.writeMicroseconds(1330);
@@ -786,8 +814,10 @@ void Move() {//detected tesseract on wall, pick it up, turn, move under beam, th
   delay(1000);
   DropOff();
 }
-void DropOff() {//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
+
+//robot under/past overhang, reach up and attach tesseract, then compress and roll back, return to main switch check
   Grip.write(170);
+void DropOff() {
   delay(500);
   ArmBase.write(90);
   delay(300);
@@ -843,48 +873,9 @@ void DropOff() {//robot under/past overhang, reach up and attach tesseract, then
   return;
 }
 
-//PID FUNCTIONS
-//THIS IS HOW YOU WRITE A FORWARD SPEED TO THE ROBOT.
-//IT'S THE EXACT SAME AS servoObject.write(pwmSpd)
-//pwmSpd -> desired pwm in ms
-//servoObject -> either LftMtr or RgtMtr
-void WriteForwardSpeed(unsigned pwmSpd) {
-  //If the robot hasn't reached the desired speed, keep accelerating
-  if (LftMtr.readMicroseconds() != pwmSpd) { //stops when desired speed is written to LftMtr
-    MotorAccelerate(pwmSpd);
-  }
-  else {
-    //Serial.println("begin coasting");
-    PIDSpeed(pwmSpd);//if robot has reached desired speed, keep speed
-  }
-}
-void MotorAccelerate(unsigned uSSpd) {
-  for (int accStps = 10; accStps >= 1; accStps--) { //steps to accelerate robot
-    mtrPID.SetSampleTime(10);//change this value if the robot moves off track at the beginning
-    accSpd = constrain((1500 + ((uSSpd - 1500) / accStps)), 1500, 2100); //left speed increases from 1500ms to target speed
-    mtrPID.SetMode(MANUAL);
-    delayMicroseconds(20);
-    mtrPID.SetMode(AUTOMATIC);
-    PIDSpeed(accSpd);//sends the current speed for PID control to right motor
-  }
-  mtrPID.SetSampleTime(10);//sets sampling time for PID control
-  PIDSpeed(uSSpd);//sets first datapoint for target speed
-  //Serial.println("Finished accelerating");
-}
-void PIDSpeed(unsigned uSSpd) { //used to ensure robot travels straight during constant velocity
-  mtrPID.SetTunings(Kp, Ki, Kd);
-  PIDLft = LftEncdr.getSpeed();//set point
-  PIDRgt = RgtEncdr.getSpeed();//monitored variable
 
-  mtrPID.Compute();//computes using Kp, Ki, Kd
-
-  LftMtr.writeMicroseconds(uSSpd);//writes desired pwm pulse to left motor
-  RgtMtr.writeMicroseconds(PIDRgtPwr);//writes controled pwm pulse to right motor
-}
 void DebuggerModule() {
   //Debugger module -> all debugger code can go here
-
-
   #ifdef DEBUG_HALL_SENSOR
   Serial.println((analogRead(HallLft) - NOFIELDLFT) * TOMILLIGAUSS / 1000);
   Serial.println((analogRead(HallRgt) - NOFIELDRGT) * TOMILLIGAUSS / 1000);
